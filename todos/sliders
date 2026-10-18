@@ -1,0 +1,59 @@
+ANIMATED RANGE SLIDER PROMPTS (7 IDEAS)
+=======================================
+
+Use the shared style at the top of every prompt. Stitch makes static screens, so the animation
+text mainly helps in the build step (Flutter or any AI coding tool).
+
+
+SHARED STYLE (PASTE FIRST)
+--------------------------
+Dark UI. Pure black #000000 page, slider container #161616 with a 1px #2A2A2A border and 10px radius, 46px tall. Monospace font. Label on the left in #A3A3A3 (13px), value on the right in bold white (14px). Thumb is a thin white vertical pill, 6px wide and 24px tall. Faint tick marks in #3A3A3A. Minimal, flat, no gradients.
+
+
+1. DOCK MAGNIFY TICKS
+---------------------
+Range slider with 31 vertical tick marks along the track. Ticks near the thumb or the hover position grow taller and brighter, following a smooth bell curve (like the macOS dock magnify effect). Ticks far away stay short, 5px, and dim at about 25% opacity. The peak height is about 27px. Height changes ease smoothly. Hovering moves the magnify focus to the pointer. When the pointer leaves, the focus returns to the thumb.
+
+
+2. ELASTIC THUMB
+----------------
+Range slider where the thumb is elastic. While dragging, the thumb lags behind the finger and stretches into a long pill reaching from its current position to the finger, getting slightly shorter in height as it stretches. When released, it springs back into a normal pill at the target position. Use a lerp of about 0.16 per frame, or a spring with stiffness around 200 and damping around 20. The value updates instantly to the finger position.
+
+
+3. LIQUID FILL
+--------------
+Range slider with a translucent white fill (16% opacity) from the left edge to the thumb. The leading edge of the fill is a vertical wavy line with a 2px bright white stroke. The wave amplitude depends on drag speed, up to 9px, and settles back to a straight line when the thumb stops. The wave keeps moving gently with a sine phase while it settles. Faint ticks sit behind the fill.
+
+
+4. ODOMETER VALUE
+-----------------
+Range slider with an odometer-style value readout on the right, showing a two-digit number from 00 to 99 followed by a % sign. Each digit sits in its own clipped column with the digits 0 to 9 stacked vertically. When the value changes, each column slides vertically to the new digit in 450ms with a small overshoot curve, cubic-bezier(0.2, 0.9, 0.3, 1.25). The tens and ones digits animate independently.
+
+
+5. SPARK TRAIL
+--------------
+Range slider where the thumb glows while dragged (white glow, 14px blur) and emits small white round particles. Each frame it spawns 3 particles at the thumb with random vertical offset of +/-10px, drifting backward opposite to the drag direction with small random velocity. Each particle shrinks and fades out over about 0.5 seconds. Particles only appear while dragging and only when the thumb is moving. The glow fades out smoothly on release.
+
+
+6. SCROLLING RULER DIAL
+-----------------------
+Taller 64px slider shaped like a ruler. A fixed white needle pill sits in the center. Behind it, a long horizontal ruler with ticks every 14px slides left and right as you drag. Every 10th tick is taller and brighter, with a small number label (0 to 10) above it. The value is whichever tick sits under the needle, shown in the right corner as one decimal, like 3.0. The ruler edges fade out to transparent. When released, the ruler snaps to the nearest tick in 350ms with a slight overshoot.
+
+
+7. LIVE PARALLAX PREVIEW
+------------------------
+Range slider labelled "Parallax" (0.0 to 1.0) with a preview panel below it, 150px tall, #0F0F0F, 12px radius, clipped. The panel has four flat layered illustrations: a light sun circle (farthest), dark blue-grey mountains, teal hills, and black foreground ground with three small pine trees. As the slider value changes, each layer shifts horizontally by a different amount: 6px, 20px, 45px and 85px, centered at value 0.5, so deeper layers move less. Add a small "Auto sweep" button that animates the value back and forth with a sine wave.
+
+
+SINGLE COMBINED PROMPT
+----------------------
+Design a dark "Customization" panel containing 7 stacked range sliders, each with a different animated style: (1) dock-magnify ticks that swell near the thumb, (2) an elastic thumb that stretches toward the finger and springs back, (3) a liquid fill whose leading edge wobbles with drag speed, (4) an odometer value where digits roll vertically, (5) a glowing thumb with a spark particle trail while dragging, (6) a scrolling ruler dial with a fixed center needle that snaps to ticks, (7) a parallax slider that drives a four-layer landscape preview. Show each slider with a small grey caption above it. Use the shared dark monospace style.
+
+
+FLUTTER BUILD TIPS
+------------------
+- Build one slider at a time.
+- Use CustomPainter with a Ticker for 1, 3 and 5.
+- Use SpringSimulation for 2.
+- Use AnimatedSlide or a clipped column of digits with AnimatedContainer for 4.
+- Suggested order: 1, 2, 4, 7 (easier), then 3, 5, 6 (harder).

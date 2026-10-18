@@ -1,0 +1,588 @@
+// card_carousel.dart
+//
+// A tilted single-card image carousel. The card flings out, the next one
+// pops in with a springy rotate/scale/brightness entrance. Drag the card
+// sideways past a threshold to change slide, or tap the pagination dots.
+//
+// Flutter port of the React `CarouselSlider` component. Zero dependencies.
+//
+// Notes
+// - Fixed square size (`size`). Center it or place it in a Column.
+// - Light / dark colors follow `Theme.of(context).brightness`. Every color
+//   can be overridden.
+// - Named `CardCarousel` (not `CarouselSlider`) to avoid clashing with the
+//   popular `carousel_slider` package and Flutter's own carousel widgets.
+
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
+
+/// One slide.
+@immutable
+class CarouselSlide {
+  const CarouselSlide({required this.id, required this.image, this.alt});
+
+  /// Convenience for network images.
+  CarouselSlide.network(this.id, String url, {this.alt}) : image = NetworkImage(url);
+
+  final int id;
+  final ImageProvider image;
+
+  /// Accessibility description of the image.
+  final String? alt;
+}
+
+class CardCarousel extends StatefulWidget {
+  const CardCarousel({
+    super.key,
+    this.slides,
+    this.initialIndex = 0,
+    this.onChanged,
+    this.favouriteIcon,
+    this.showFavourite = true,
+    this.onFavourite,
+    this.showPagination = true,
+    this.size = 256,
+    this.tilt = -6,
+    this.cardTilt = -3,
+    this.cardRadius = 40,
+    this.dragThreshold = 120,
+    this.dragElastic = 0.5,
+    this.cardColor,
+    this.borderColor,
+    this.buttonColor,
+    this.iconColor,
+    this.dotColor = const Color(0xFFCCC7B8),
+    this.showDots = true,
+  });
+
+  /// Defaults to six landscape photos.
+  final List<CarouselSlide>? slides;
+
+  final int initialIndex;
+
+  /// Fired when a new slide has finished exiting and starts entering.
+  final ValueChanged<int>? onChanged;
+
+  /// Icon inside the favourite button. Defaults to an outlined heart.
+  /// Its color comes from [iconColor].
+  final Widget? favouriteIcon;
+  final bool showFavourite;
+
+  /// Fired with the current slide index when the favourite button is tapped.
+  final ValueChanged<int>? onFavourite;
+
+  final bool showPagination;
+
+  /// Width and height of the card area.
+  final double size;
+
+  /// Rotation of the whole carousel, in degrees.
+  final double tilt;
+
+  /// Extra rotation of the card at rest, in degrees.
+  final double cardTilt;
+
+  final double cardRadius;
+
+  /// Drag distance (px) past which a release changes slide.
+  final double dragThreshold;
+
+  /// How much of the finger movement the card follows (0 - 1).
+  final double dragElastic;
+
+  final Color? cardColor;
+  final Color? borderColor;
+  final Color? buttonColor;
+  final Color? iconColor;
+  final Color dotColor;
+  final bool showDots;
+
+  static final List<CarouselSlide> defaultSlides = [
+    CarouselSlide.network(1, 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=500&auto=format&fit=crop'),
+    CarouselSlide.network(2, 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=500&auto=format&fit=crop'),
+    CarouselSlide.network(3, 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=500&auto=format&fit=crop'),
+    CarouselSlide.network(4, 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=500&auto=format&fit=crop'),
+    CarouselSlide.network(5, 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=500&auto=format&fit=crop'),
+    CarouselSlide.network(6, 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=500&auto=format&fit=crop'),
+  ];
+
+  @override
+  State<CardCarousel> createState() => _CardCarouselState();
+}
+
+// ---------------------------------------------------------------------------
+// internals
+// ---------------------------------------------------------------------------
+
+enum _Phase { idle, exiting, entering }
+
+@immutable
+class _Pose {
+  const _Pose(this.x, this.scale, this.opacity, this.rot, this.bright);
+  final double x;
+  final double scale;
+  final double opacity;
+  final double rot; // degrees
+  final double bright;
+}
+
+/// Curve that samples a damped spring from 0 to 1 over [seconds].
+class _SpringCurve extends Curve {
+  _SpringCurve(SpringDescription spring, this.seconds) : _sim = SpringSimulation(spring, 0, 1, 0);
+
+  final double seconds;
+  final SpringSimulation _sim;
+
+  @override
+  double transformInternal(double t) => _sim.x(t * seconds);
+}
+
+const Duration _phaseTime = Duration(milliseconds: 500);
+
+// x: spring(bounce 0.2, 0.5s). rotate: stiff default spring.
+final Curve _xCurve = _SpringCurve(SpringDescription.withDurationAndBounce(duration: const Duration(milliseconds: 500), bounce: 0.2), 0.5);
+final Curve _rotCurve = _SpringCurve(const SpringDescription(mass: 1, stiffness: 500, damping: 25), 0.5);
+final Curve _dotCurve = _SpringCurve(const SpringDescription(mass: 1, stiffness: 300, damping: 20), 0.4);
+const Curve _scaleCurve = Interval(0, 0.7, curve: Curves.easeInOut); // 0.35s
+const Curve _opacityCurve = Interval(0, 0.5, curve: Curves.easeInOut); // 0.25s
+const Curve _brightCurve = Interval(0, 0.6, curve: Curves.easeInOut); // 0.3s
+
+const SpringDescription _snapBackSpring = SpringDescription(mass: 1, stiffness: 500, damping: 10);
+
+class _CardCarouselState extends State<CardCarousel> with TickerProviderStateMixin {
+  late final AnimationController _anim = AnimationController(vsync: this, duration: _phaseTime);
+
+  /// Horizontal drag offset of the card (px, already elastic).
+  late final AnimationController _drag = AnimationController.unbounded(vsync: this);
+
+  final FocusNode _focus = FocusNode(debugLabel: 'CardCarousel');
+
+  late int _index;
+  int? _target;
+  int _exitDir = 1;
+  int _enterDir = 1;
+  _Phase _phase = _Phase.idle;
+  _Pose _from = const _Pose(0, 1, 1, 0, 1);
+  double _raw = 0;
+  bool _reduce = false;
+  bool _precached = false;
+
+  List<CarouselSlide> get _slides => widget.slides ?? CardCarousel.defaultSlides;
+  int get _n => _slides.length;
+  int get _shownDot => _phase == _Phase.exiting ? _target! : _index;
+
+  @override
+  void initState() {
+    super.initState();
+    _index = _n == 0 ? 0 : widget.initialIndex.clamp(0, _n - 1);
+    _anim.addStatusListener(_onStatus);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduce = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (reduce != _reduce) {
+      _reduce = reduce;
+      _anim.duration = reduce ? const Duration(milliseconds: 150) : _phaseTime;
+    }
+    if (!_precached) {
+      _precached = true;
+      for (final s in _slides) {
+        precacheImage(s.image, context, onError: (_, __) {});
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CardCarousel old) {
+    super.didUpdateWidget(old);
+    if (_n == 0) return;
+    if (_index >= _n) _index = _n - 1;
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    _drag.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  // ---- poses --------------------------------------------------------------
+
+  _Pose get _center => _Pose(0, 1, 1, widget.cardTilt, 1);
+
+  _Pose _enterPose(int dir) => _reduce ? _Pose(0, 1, 0, widget.cardTilt, 1) : _Pose(dir > 0 ? 200 : -200, 0.75, 0, dir > 0 ? 30 : -30, 2);
+
+  _Pose _exitPose(int dir) => _reduce ? _Pose(0, 1, 0, widget.cardTilt, 1) : _Pose(dir > 0 ? -200 : 200, 0.75, 0, dir > 0 ? -30 : 30, 2);
+
+  _Pose _mix(_Pose a, _Pose b, double t) {
+    double l(double p, double q, double c) => p + (q - p) * c;
+    return _Pose(
+      l(a.x, b.x, _xCurve.transform(t)),
+      l(a.scale, b.scale, _scaleCurve.transform(t)),
+      l(a.opacity, b.opacity, _opacityCurve.transform(t)).clamp(0.0, 1.0).toDouble(),
+      l(a.rot, b.rot, _rotCurve.transform(t)),
+      l(a.bright, b.bright, _brightCurve.transform(t)),
+    );
+  }
+
+  _Pose _poseNow() {
+    switch (_phase) {
+      case _Phase.idle:
+        final dx = _drag.value;
+        return _Pose(dx, 1, 1, widget.cardTilt + (dx * 18 / 200).clamp(-18.0, 18.0), 1);
+      case _Phase.exiting:
+        return _mix(_from, _exitPose(_exitDir), _anim.value);
+      case _Phase.entering:
+        return _mix(_enterPose(_enterDir), _center, _anim.value);
+    }
+  }
+
+  // ---- navigation ---------------------------------------------------------
+
+  void _onStatus(AnimationStatus s) {
+    if (s != AnimationStatus.completed) return;
+    if (_phase == _Phase.exiting) {
+      setState(() {
+        _index = _target!;
+        _target = null;
+        _phase = _Phase.entering;
+      });
+      widget.onChanged?.call(_index);
+      _anim.forward(from: 0);
+    } else if (_phase == _Phase.entering) {
+      setState(() => _phase = _Phase.idle);
+    }
+  }
+
+  void _go(int to, int dir) {
+    if (_n < 2 || to < 0 || to >= _n) return;
+    final current = _phase == _Phase.exiting ? _target! : _index;
+    if (to == current) return;
+
+    if (_phase == _Phase.exiting) {
+      // finish the running exit, then enter the latest request
+      _target = to;
+      _enterDir = dir;
+      return;
+    }
+    _from = _poseNow();
+    _drag.value = 0;
+    setState(() {
+      _target = to;
+      _exitDir = dir;
+      _enterDir = dir;
+      _phase = _Phase.exiting;
+    });
+    _anim.forward(from: 0);
+  }
+
+  void _step(int dir) {
+    final base = _phase == _Phase.exiting ? _target! : _index;
+    _go((base + dir + _n) % _n, dir);
+  }
+
+  // ---- drag ---------------------------------------------------------------
+
+  void _dragStart(DragStartDetails d) {
+    if (_phase != _Phase.idle) return;
+    _drag.stop();
+    _raw = _drag.value / math.max(0.01, widget.dragElastic);
+  }
+
+  void _dragUpdate(DragUpdateDetails d) {
+    if (_phase != _Phase.idle) return;
+    _raw += d.delta.dx;
+    _drag.value = _raw * widget.dragElastic;
+  }
+
+  void _dragEnd(DragEndDetails d) {
+    if (_phase != _Phase.idle) return;
+    if (_raw < -widget.dragThreshold) {
+      _step(1);
+    } else if (_raw > widget.dragThreshold) {
+      _step(-1);
+    } else {
+      _snapBack(d.velocity.pixelsPerSecond.dx * widget.dragElastic);
+    }
+    _raw = 0;
+  }
+
+  void _snapBack([double v = 0]) {
+    if (_reduce) {
+      _drag.value = 0;
+      return;
+    }
+
+    _drag.animateWith(SpringSimulation(_snapBackSpring, _drag.value, 0, v));
+  }
+
+  // ---- build --------------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    if (_n == 0) return SizedBox(width: widget.size, height: widget.size);
+
+    final w = widget;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = w.cardColor ?? (dark ? const Color(0xFF18181B) : const Color(0xFFFDFDFD));
+    final borderColor = w.borderColor ?? (dark ? const Color(0xFF27272A) : const Color(0xFFE6E6EA));
+    final buttonColor = w.buttonColor ?? (dark ? const Color(0xE618181B) : const Color(0xFFEDEDED));
+    final iconColor = w.iconColor ?? (dark ? const Color(0xE6FFFFFF) : const Color(0xFF2B2B2B));
+    final backFill = dark ? const Color(0xFF18181B) : Colors.grey.withOpacity(0.3);
+    final backBorder = dark ? const Color(0xFF27272A) : Colors.grey.withOpacity(0.3);
+
+    final tilt = w.tilt * math.pi / 180;
+
+    final stage = Transform.rotate(
+      angle: tilt,
+      child: SizedBox(
+        width: w.size,
+        height: w.size,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            // background card
+            Opacity(
+              opacity: 0.5,
+              child: Transform.scale(
+                scale: 0.95,
+                child: Container(
+                  width: w.size * 0.95,
+                  height: w.size * 0.95,
+                  decoration: BoxDecoration(
+                    color: backFill,
+                    borderRadius: BorderRadius.circular(w.cardRadius),
+                    border: Border.all(color: backBorder, width: 6),
+                  ),
+                ),
+              ),
+            ),
+            // front card
+            AnimatedBuilder(
+              animation: Listenable.merge([_anim, _drag]),
+              builder: (context, _) {
+                final p = _poseNow();
+                Widget card = Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..translate(p.x, 0.0)
+                    ..rotateZ(p.rot * math.pi / 180)
+                    ..scale(p.scale, p.scale, 1.0),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: _dragStart,
+                    onHorizontalDragUpdate: _dragUpdate,
+                    onHorizontalDragEnd: _dragEnd,
+                    onHorizontalDragCancel: () {
+                      if (_phase == _Phase.idle) {
+                        _raw = 0;
+                        _snapBack();
+                      }
+                    },
+                    child: _face(cardColor: cardColor, borderColor: borderColor, buttonColor: buttonColor, iconColor: iconColor),
+                  ),
+                );
+                if (p.bright > 1.001) {
+                  final b = p.bright;
+                  card = ColorFiltered(
+                    colorFilter: ColorFilter.matrix(<double>[
+                      b, 0, 0, 0, 0, //
+                      0, b, 0, 0, 0, //
+                      0, 0, b, 0, 0, //
+                      0, 0, 0, 1, 0,
+                    ]),
+                    child: card,
+                  );
+                }
+                return Opacity(opacity: p.opacity, child: card);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final dots = w.showDots == true
+        ? Transform.rotate(
+            angle: tilt,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 32),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < _n; i++)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _go(i, i > _index ? 1 : -1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 6),
+                        child: AnimatedScale(
+                          scale: i == _shownDot ? 1.2 : 1,
+                          duration: const Duration(milliseconds: 400),
+                          curve: _dotCurve,
+                          child: AnimatedOpacity(
+                            opacity: i == _shownDot ? 1 : 0.4,
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOut,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(color: w.dotColor, shape: BoxShape.circle),
+                              child: const SizedBox(width: 10, height: 10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          )
+        : null;
+
+    final shown = _shownDot;
+    return Semantics(
+      container: true,
+      label: 'Image carousel',
+      value: '${shown + 1} of $_n',
+      increasedValue: '${(shown + 1) % _n + 1} of $_n',
+      decreasedValue: '${(shown - 1 + _n) % _n + 1} of $_n',
+      onIncrease: () => _step(1),
+      onDecrease: () => _step(-1),
+      child: Focus(
+        focusNode: _focus,
+        onKeyEvent: (node, e) {
+          if (e is KeyUpEvent) return KeyEventResult.ignored;
+          if (e.logicalKey == LogicalKeyboardKey.arrowRight) {
+            _step(1);
+            return KeyEventResult.handled;
+          }
+          if (e.logicalKey == LogicalKeyboardKey.arrowLeft) {
+            _step(-1);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            stage,
+            if (w.showPagination && _n > 1 && w.showDots) ...[const SizedBox(height: 26), dots!],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _face({required Color cardColor, required Color borderColor, required Color buttonColor, required Color iconColor}) {
+    final w = widget;
+    final slide = _slides[_index];
+    final inner = (w.cardRadius - 8).clamp(0.0, 999.0).toDouble();
+
+    const shadow = [
+      BoxShadow(color: Color(0x1A000000), offset: Offset(0, 4), blurRadius: 6, spreadRadius: -1),
+      BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 4, spreadRadius: -2),
+    ];
+
+    return KeyedSubtree(
+      key: ValueKey(_index),
+      child: Container(
+        width: w.size,
+        height: w.size,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(w.cardRadius),
+          border: Border.all(color: borderColor, width: 1.2),
+          boxShadow: shadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(inner),
+          child: ColoredBox(
+            color: const Color(0xFFF4F4F5),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image(
+                  image: slide.image,
+                  fit: BoxFit.cover,
+                  semanticLabel: slide.alt,
+                  excludeFromSemantics: slide.alt == null,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined, color: Color(0xFFA1A1AA))),
+                ),
+                if (w.showFavourite)
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: _FavouriteButton(
+                      color: buttonColor,
+                      onTap: () {
+                        if (_phase == _Phase.idle) w.onFavourite?.call(_index);
+                      },
+                      child: IconTheme(
+                        data: IconThemeData(color: iconColor, size: 26),
+                        child: w.favouriteIcon ?? const Icon(Icons.favorite_border_rounded),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FavouriteButton extends StatelessWidget {
+  const _FavouriteButton({required this.color, required this.onTap, required this.child});
+
+  final Color color;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Favourite',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: Color(0x1A000000), offset: Offset(0, 4), blurRadius: 6, spreadRadius: -1),
+              BoxShadow(color: Color(0x1A000000), offset: Offset(0, 2), blurRadius: 4, spreadRadius: -2),
+            ],
+          ),
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

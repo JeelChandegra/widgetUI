@@ -1,0 +1,31 @@
+Shared style (paste first)
+
+Dark UI. Pure black #000000 page. Dropdown field is 46px tall, #161616 background, 1px #2A2A2A border, 10px radius. Monospace font. Label "Preset" on the left in #A3A3A3 (13px). Selected value on the right in bold white (14px), followed by a small grey chevron-down icon. Options: Liquid, Glass, Elastic, Magnetic, Orbit. Minimal, flat, no gradients.
+
+1. Classic menu
+
+Dropdown that opens a menu directly below the field with a 6px gap. The menu has a #111111 background, 1px #2A2A2A border, 10px radius and 4px padding. Each option is 38px tall with 12px side padding, rounded 7px, in #BDBDBD text. On hover the row turns #1E1E1E with white text. The selected option shows a white check icon on the right. Animation: the menu height grows open in 320ms with an ease-out curve, the chevron rotates 180°, and the options fade in and slide down 6px one after another with a 35ms stagger.
+
+2. Expand in place
+
+Dropdown where the field and the list are one connected container with a single 1px #2A2A2A border, 10px radius and #161616 background. The closed state looks like a normal field. When opened, the container grows downward to reveal the options below a thin 1px divider line, with no gap and no separate popup. The options have no borders, only a hover background of #1E1E1E. The chevron rotates 180°. The list height animates in 320ms. The selected option shows a check on the right.
+
+3. Gliding highlight
+
+Dropdown with the same menu as a classic one (#111111, 1px #2A2A2A border, 38px rows), but with a single highlight pill (#232323, 7px radius) behind the options. The pill glides to whichever option the pointer is over, with a springy overshoot curve cubic-bezier(0.3, 1.4, 0.5, 1) over 300ms, instead of each row changing background on its own. When the pointer leaves the menu, the pill returns to the selected option. The selected option also has a 3px white vertical bar on its left edge and white text.
+
+4. Wheel picker
+
+Dropdown that opens a 170px tall wheel picker below the field, in a #111111 box with a 1px #2A2A2A border and 10px radius. The five options are stacked vertically like a 3D drum. The centered option is large and fully white. Options further away shrink by 10% per step, fade to 60% and 20% opacity, and tilt back with rotateX of 30° per step under a perspective of about 520px. Two thin 1px #3A3A3A lines mark the selection band around the center row. Scrolling with the mouse wheel or swiping moves one option per step with a 380ms spring. Tapping an off-center option rolls it to the center. Tapping the centered option closes the picker. A small grey hint "scroll or click" sits at the bottom right. The value in the field updates live.
+
+5. Rich options
+
+Dropdown whose menu rows are 46px tall and show a 22px rounded colored swatch on the left, the option name, a short grey description on the right (12px, #737373), and a check on the selected row. Swatch colors: Liquid teal #2DD4BF, Glass blue #60A5FA, Elastic violet #A78BFA, Magnetic amber #FBBF24, Orbit coral #FB7185. Descriptions: Wobbling fill, Frosted blur, Stretchy thumb, Snaps to ticks, Circular motion. The selected row has a #1A1A1A background with a 1px #333333 inner border. The closed field also shows a small 12px swatch before the selected name.
+
+6. Stepper (no menu)
+
+Field with the label "Preset" on the left and, on the right, a left chevron, a clipped 84px wide value window, and a right chevron. There is no dropdown menu. Tapping an arrow cycles to the previous or next option, wrapping around at both ends. The value window shows one name at a time, and the names are stacked in a vertical column that slides up or down by one row (20px) in 420ms with a small overshoot, like a slot-machine reel. Arrows are #737373, turn white on hover, and shrink to 75% while pressed.
+
+Single combined prompt
+
+Design a dark "Settings" panel with six dropdown fields stacked vertically, all labelled "Preset" with options Liquid, Glass, Elastic, Magnetic and Orbit, each in a different style: (1) a classic menu with a check on the selected row, (2) a field that expands in place with the list inside the same bordered container, (3) a menu with a single gliding highlight pill behind the options, (4) a 3D wheel picker with a selection band, (5) rich rows with color swatches and short descriptions, (6) a stepper with left and right arrows and a rolling value. Show a small grey caption above each one. Use the shared dark monospace style.
