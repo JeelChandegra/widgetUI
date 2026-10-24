@@ -1,0 +1,4080 @@
+  // // main.dart — demo for jewel_case_row.dart (put both files in lib/).
+  // //
+  // // Shows: intro cascade, drag/fling/scrubber, "Pick for me" slot-machine spin,
+  // // and "add to cart" where the selected case arcs into the cart badge.
+  // // Covers are generated gradients so there are no asset files to set up.
+  //
+  // import 'dart:math' as math;
+  //
+  // import 'package:flutter/foundation.dart';
+  // import 'package:flutter/material.dart';
+  // import 'package:flutter/services.dart';
+  // import 'dart:async' show Completer;
+  // import 'dart:math' as math;
+  // import 'dart:ui' show ImageFilter;
+  //
+  // import 'package:flutter/gestures.dart';
+  // import 'package:flutter/material.dart';
+  // import 'package:flutter/physics.dart';
+  // import 'package:flutter/services.dart';
+  //
+  //
+  // void main() {
+  //   WidgetsFlutterBinding.ensureInitialized();
+  //   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+  //   runApp(MaterialApp(
+  //     debugShowCheckedModeBanner: false,
+  //     theme: ThemeData.dark(useMaterial3: true),
+  //     home: const DemoScreen(),
+  //   ));
+  // }
+  //
+  // class Movie {
+  //   const Movie(this.title, this.year, this.genre, this.runtime, this.c1, this.c2);
+  //   final String title;
+  //   final int year;
+  //   final String genre;
+  //   final String runtime;
+  //   final Color c1;
+  //   final Color c2;
+  // }
+  //
+  // const movies = <Movie>[
+  //   Movie('Blade Runner 2049', 2017, 'Sci-Fi', '2h 44m', Color(0xFFE8833A), Color(0xFF2B1B3D)),
+  //   Movie('Arrival', 2016, 'Sci-Fi', '1h 56m', Color(0xFF7FA6B8), Color(0xFF1C2B36)),
+  //   Movie('Interstellar', 2014, 'Sci-Fi', '2h 49m', Color(0xFF3D6FA8), Color(0xFF0B1424)),
+  //   Movie('Dune', 2021, 'Sci-Fi', '2h 35m', Color(0xFFD9A25F), Color(0xFF4A2E1A)),
+  //   Movie('Spider-Man: Into the Spider-Verse', 2018, 'Animation', '1h 57m', Color(0xFF4FA3E8), Color(0xFF1B1F5E)),
+  //   Movie('Parasite', 2019, 'Thriller', '2h 12m', Color(0xFF6E8F5A), Color(0xFF16221A)),
+  //   Movie('Whiplash', 2014, 'Drama', '1h 46m', Color(0xFFC8352B), Color(0xFF1A0D0D)),
+  //   Movie('La La Land', 2016, 'Musical', '2h 8m', Color(0xFF8B5FD0), Color(0xFF1E1240)),
+  //   Movie('Mad Max: Fury Road', 2015, 'Action', '2h', Color(0xFFE5A323), Color(0xFF3A1708)),
+  //   Movie('The Grand Budapest Hotel', 2014, 'Comedy', '1h 39m', Color(0xFFE88BA6), Color(0xFF4A1F36)),
+  //   Movie('Inception', 2010, 'Sci-Fi', '2h 28m', Color(0xFF5C7C8A), Color(0xFF10181E)),
+  //   Movie('Everything Everywhere All at Once', 2022, 'Sci-Fi', '2h 19m', Color(0xFFD14FA0), Color(0xFF241046)),
+  //   Movie('Spirited Away', 2001, 'Animation', '2h 5m', Color(0xFF3FB29A), Color(0xFF0F2B33)),
+  //   Movie('Moonlight', 2016, 'Drama', '1h 51m', Color(0xFF2E7DD1), Color(0xFF0A1A33)),
+  //   Movie('Drive', 2011, 'Crime', '1h 40m', Color(0xFFFF6B8B), Color(0xFF1B0F2B)),
+  // ];
+  //
+  // class DemoScreen extends StatefulWidget {
+  //   const DemoScreen({super.key});
+  //
+  //   @override
+  //   State<DemoScreen> createState() => _DemoScreenState();
+  // }
+  //
+  // class _DemoScreenState extends State<DemoScreen> with TickerProviderStateMixin {
+  //   final _ctrl = JewelCaseController(initialIndex: 4);
+  //   final _cartKey = GlobalKey();
+  //   final _rng = math.Random();
+  //   late final AnimationController _bounce;
+  //
+  //   int _cart = 0;
+  //   double _shuffleTurns = 0;
+  //   bool _adding = false;
+  //
+  //   @override
+  //   void initState() {
+  //     super.initState();
+  //     _bounce = AnimationController(
+  //       vsync: this,
+  //       duration: const Duration(milliseconds: 700),
+  //       value: 1,
+  //     );
+  //   }
+  //
+  //   @override
+  //   void dispose() {
+  //     _bounce.dispose();
+  //     _ctrl.dispose();
+  //     super.dispose();
+  //   }
+  //
+  //   Future<void> _addToCart() async {
+  //     if (_adding) return;
+  //     _adding = true;
+  //     await _ctrl.flyOut(target: _cartKey);
+  //     if (!mounted) return;
+  //     setState(() => _cart++);
+  //     HapticFeedback.lightImpact();
+  //     _bounce.forward(from: 0);
+  //     _adding = false;
+  //   }
+  //
+  //   void _pickForMe() {
+  //     final n = movies.length;
+  //     final cur = _ctrl.currentIndex;
+  //     var j = _rng.nextInt(n);
+  //     if (j == cur) j = (j + 1) % n;
+  //     final ms = (700 + (j - cur).abs() * 110).clamp(900, 2400);
+  //     setState(() => _shuffleTurns += 1);
+  //     HapticFeedback.mediumImpact();
+  //     _ctrl.spinTo(j, duration: Duration(milliseconds: ms));
+  //   }
+  //
+  //   Color _tint(double pos) {
+  //     final p = pos.clamp(0.0, movies.length - 1.0).toDouble();
+  //     final i = p.floor();
+  //     final j = math.min(i + 1, movies.length - 1);
+  //     return Color.lerp(movies[i].c1, movies[j].c1, p - i)!;
+  //   }
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     return Scaffold(
+  //       backgroundColor: const Color(0xFF0B1B33),
+  //       body: Stack(
+  //         children: [
+  //           // Background follows the scroll position.
+  //           Positioned.fill(
+  //             child: ValueListenableBuilder<double>(
+  //               valueListenable: _ctrl.positionListenable,
+  //               builder: (context, pos, _) {
+  //                 final tint = _tint(pos);
+  //                 return DecoratedBox(
+  //                   decoration: BoxDecoration(
+  //                     gradient: LinearGradient(
+  //                       begin: Alignment.topCenter,
+  //                       end: Alignment.bottomCenter,
+  //                       colors: [
+  //                         Color.lerp(const Color(0xFF0B1B33), tint, 0.30)!,
+  //                         Color.lerp(const Color(0xFF2A5373), tint, 0.22)!,
+  //                         Color.lerp(const Color(0xFF4A7A99), tint, 0.18)!,
+  //                       ],
+  //                       stops: const [0, 0.55, 1],
+  //                     ),
+  //                   ),
+  //                 );
+  //               },
+  //             ),
+  //           ),
+  //           SafeArea(
+  //             child:
+  //
+  //             JewelCaseRow(
+  //               controller: _ctrl,
+  //               initialIndex: 4,
+  //               itemCount: movies.length,
+  //               autofocus: true,
+  //               coverBuilder: (context, i) => _Cover(movie: movies[i]),
+  //               spineLabelBuilder: (i) => movies[i].title,
+  //               spineSubLabelBuilder: (i) => '${movies[i].year}',
+  //               headerBuilder: (context, c) => _Header(
+  //                 movie: movies[c.currentIndex],
+  //                 cartKey: _cartKey,
+  //                 cartCount: _cart,
+  //                 bounce: _bounce,
+  //               ),
+  //               controlsBuilder: (context, c) => Padding(
+  //                 padding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+  //                 child: Column(
+  //                   mainAxisSize: MainAxisSize.min,
+  //                   children: [
+  //                     JewelCaseScrubber(controller: c),
+  //                     const SizedBox(height: 14),
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                       children: [
+  //                         JewelCaseGlassButton(
+  //                           tooltip: 'Add to cart',
+  //                           onPressed: _addToCart,
+  //                           child: const Icon(Icons.add_shopping_cart_rounded),
+  //                         ),
+  //                         _PickPill(turns: _shuffleTurns, onTap: _pickForMe),
+  //                         JewelCaseGlassButton(
+  //                           tooltip: 'Filters',
+  //                           onPressed: () {},
+  //                           child: const Icon(Icons.tune_rounded),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
+  // }
+  //
+  // class _Header extends StatelessWidget {
+  //   const _Header({
+  //     required this.movie,
+  //     required this.cartKey,
+  //     required this.cartCount,
+  //     required this.bounce,
+  //   });
+  //
+  //   final Movie movie;
+  //   final GlobalKey cartKey;
+  //   final int cartCount;
+  //   final Animation<double> bounce;
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     return Padding(
+  //       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+  //       child: Row(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           JewelCaseGlassButton(
+  //             size: 48,
+  //             tooltip: 'Search',
+  //             onPressed: () {},
+  //             child: const Icon(Icons.search_rounded),
+  //           ),
+  //           Expanded(
+  //             child: SizedBox(
+  //               height: 92,
+  //               child: AnimatedSwitcher(
+  //                 duration: const Duration(milliseconds: 320),
+  //                 switchInCurve: Curves.easeOutCubic,
+  //                 transitionBuilder: (child, anim) => FadeTransition(
+  //                   opacity: anim,
+  //                   child: SlideTransition(
+  //                     position: Tween<Offset>(
+  //                       begin: const Offset(0, 0.18),
+  //                       end: Offset.zero,
+  //                     ).animate(anim),
+  //                     child: child,
+  //                   ),
+  //                 ),
+  //                 child: Column(
+  //                   key: ValueKey(movie.title),
+  //                   mainAxisAlignment: MainAxisAlignment.center,
+  //                   children: [
+  //                     Text(
+  //                       movie.title,
+  //                       textAlign: TextAlign.center,
+  //                       maxLines: 2,
+  //                       overflow: TextOverflow.ellipsis,
+  //                       style: const TextStyle(
+  //                         color: Colors.white,
+  //                         fontSize: 26,
+  //                         fontWeight: FontWeight.w700,
+  //                         height: 1.15,
+  //                       ),
+  //                     ),
+  //                     const SizedBox(height: 6),
+  //                     Text(
+  //                       '${movie.year}  ·  ${movie.genre}  ·  ${movie.runtime}',
+  //                       style: TextStyle(
+  //                         color: Colors.white.withAlpha(150),
+  //                         fontSize: 15,
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //           // Fly-to-cart target. The badge pops when a case lands.
+  //           KeyedSubtree(
+  //             key: cartKey,
+  //             child: ScaleTransition(
+  //               scale: Tween<double>(begin: 1.4, end: 1.0).animate(
+  //                 CurvedAnimation(parent: bounce, curve: Curves.elasticOut),
+  //               ),
+  //               child: Stack(
+  //                 clipBehavior: Clip.none,
+  //                 children: [
+  //                   JewelCaseGlassButton(
+  //                     size: 48,
+  //                     tooltip: 'Cart',
+  //                     onPressed: () {},
+  //                     child: const Icon(Icons.shopping_bag_outlined),
+  //                   ),
+  //                   if (cartCount > 0)
+  //                     Positioned(
+  //                       top: -4,
+  //                       right: -4,
+  //                       child: AnimatedSwitcher(
+  //                         duration: const Duration(milliseconds: 250),
+  //                         transitionBuilder: (c, a) =>
+  //                             ScaleTransition(scale: a, child: c),
+  //                         child: Container(
+  //                           key: ValueKey(cartCount),
+  //                           constraints:
+  //                           const BoxConstraints(minWidth: 20, minHeight: 20),
+  //                           padding: const EdgeInsets.symmetric(horizontal: 5),
+  //                           alignment: Alignment.center,
+  //                           decoration: BoxDecoration(
+  //                             color: const Color(0xFFFF4D6D),
+  //                             borderRadius: BorderRadius.circular(10),
+  //                           ),
+  //                           child: Text(
+  //                             '$cartCount',
+  //                             style: const TextStyle(
+  //                               color: Colors.white,
+  //                               fontSize: 12,
+  //                               fontWeight: FontWeight.w700,
+  //                               height: 1,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
+  // }
+  //
+  // class _PickPill extends StatelessWidget {
+  //   const _PickPill({required this.turns, required this.onTap});
+  //
+  //   final double turns;
+  //   final VoidCallback onTap;
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     return Material(
+  //       color: Colors.transparent,
+  //       child: Ink(
+  //         height: 56,
+  //         width: 176,
+  //         decoration: BoxDecoration(
+  //           borderRadius: BorderRadius.circular(28),
+  //           gradient: const LinearGradient(
+  //             begin: Alignment.topCenter,
+  //             end: Alignment.bottomCenter,
+  //             colors: [Color(0xFFF4F5FB), Color(0xFFC3C9E6)],
+  //           ),
+  //           boxShadow: [
+  //             BoxShadow(
+  //               color: Colors.black.withAlpha(70),
+  //               blurRadius: 18,
+  //               offset: const Offset(0, 6),
+  //             ),
+  //           ],
+  //         ),
+  //         child: InkWell(
+  //           borderRadius: BorderRadius.circular(28),
+  //           onTap: onTap,
+  //           child: Row(
+  //             mainAxisAlignment: MainAxisAlignment.center,
+  //             children: [
+  //               AnimatedRotation(
+  //                 turns: turns,
+  //                 duration: const Duration(milliseconds: 650),
+  //                 curve: Curves.easeOutCubic,
+  //                 child: const Icon(
+  //                   Icons.shuffle_rounded,
+  //                   color: Color(0xFF1A2236),
+  //                   size: 22,
+  //                 ),
+  //               ),
+  //               const SizedBox(width: 10),
+  //               const Text(
+  //                 'Pick for me',
+  //                 style: TextStyle(
+  //                   color: Color(0xFF1A2236),
+  //                   fontSize: 17,
+  //                   fontWeight: FontWeight.w600,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+  //
+  // /// Generated poster so the demo needs no assets. Swap for Image.asset/network.
+  // class _Cover extends StatelessWidget {
+  //   const _Cover({required this.movie});
+  //
+  //   final Movie movie;
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     return LayoutBuilder(builder: (context, c) {
+  //       final w = c.maxWidth;
+  //       return DecoratedBox(
+  //         decoration: BoxDecoration(
+  //           gradient: LinearGradient(
+  //             begin: Alignment.topLeft,
+  //             end: Alignment.bottomRight,
+  //             colors: [movie.c1, movie.c2],
+  //           ),
+  //         ),
+  //         child: Stack(
+  //           children: [
+  //             Positioned(
+  //               top: -w * 0.25,
+  //               right: -w * 0.2,
+  //               child: Container(
+  //                 width: w * 0.9,
+  //                 height: w * 0.9,
+  //                 decoration: BoxDecoration(
+  //                   shape: BoxShape.circle,
+  //                   color: Colors.white.withAlpha(36),
+  //                 ),
+  //               ),
+  //             ),
+  //             Align(
+  //               alignment: Alignment.bottomLeft,
+  //               child: Padding(
+  //                 padding: EdgeInsets.all(w * 0.09),
+  //                 child: Text(
+  //                   movie.title.toUpperCase(),
+  //                   maxLines: 4,
+  //                   overflow: TextOverflow.ellipsis,
+  //                   style: TextStyle(
+  //                     color: Colors.white,
+  //                     fontSize: math.max(7, w * 0.12),
+  //                     fontWeight: FontWeight.w900,
+  //                     height: 1.05,
+  //                     decoration: TextDecoration.none,
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     });
+  //   }
+  // }
+  //
+  //
+  // // jewel_case_row.dart
+  // //
+  // // JewelCaseRow — a 3D perspective row of jewel cases for Flutter.
+  // // Single file. Zero dependencies. Flutter 3.10+.
+  // //
+  // // Quick start:
+  // //
+  // //   final controller = JewelCaseController();
+  // //
+  // //   SizedBox(
+  // //     height: 600, // needs bounded height
+  // //     child: JewelCaseRow(
+  // //       controller: controller,
+  // //       itemCount: movies.length,
+  // //       coverBuilder: (context, i) => Image.asset(movies[i].poster, fit: BoxFit.cover),
+  // //       spineLabelBuilder: (i) => movies[i].title,
+  // //       spineSubLabelBuilder: (i) => '${movies[i].year}',
+  // //       onIndexChanged: (i) => debugPrint('selected $i'),
+  // //       controlsBuilder: (context, c) => JewelCaseScrubber(controller: c),
+  // //     ),
+  // //   );
+  // //
+  // // Input: horizontal drag (with fling + spring snap), mouse wheel / trackpad,
+  // // arrow keys, tap a case to bring it to front.
+  // //
+  // // Defaults are tuned to the "shelf" look: near-orthographic projection, cases
+  // // yawed ~35°, the selected case slid out of the row along its own width.
+  // // Everything is in [JewelCaseStyle]; use copyWith to tweak.
+  //
+  //
+  //
+  // typedef JewelCoverBuilder = Widget Function(BuildContext context, int index);
+  // typedef JewelSpineLabelBuilder = String? Function(int index);
+  // typedef JewelSlotBuilder = Widget Function(
+  //     BuildContext context,
+  //     JewelCaseController controller,
+  //     );
+  //
+  // // ─────────────────────────────────────────────────────────────────────────────
+  // // Style
+  // // ─────────────────────────────────────────────────────────────────────────────
+  //
+  // /// Every look parameter in one immutable object.
+  // /// Size-related values are fractions of case height, so the row scales with
+  // /// whatever space it is given.
+  // @immutable
+  // class JewelCaseStyle {
+  //   const JewelCaseStyle({
+  //     this.caseHeight,
+  //     this.heightFactor = 0.38,
+  //     this.aspectRatio = 1.0,
+  //     this.thickness = 0.06,
+  //     this.thicknessLayers = 10,
+  //     this.caseAngle = 0.62,
+  //     this.sceneTilt = 0.44,
+  //     this.perspective = 0.05,
+  //     this.stepX = 0.135,
+  //     this.stepY = -0.012,
+  //     this.stepZ = 0.19,
+  //     this.anchor = 2.3,
+  //     this.pullOut = 0.8,
+  //     this.visibleCount = 11,
+  //     this.behindCount = 7,
+  //     this.fadeStart = 0.55,
+  //     this.nearBlur = 0.9,
+  //     this.farBlur = 2.0,
+  //     this.dimFar = 0.35,
+  //     this.borderRadius = 0.02,
+  //     this.inset = 0.03,
+  //     this.caseColor = const Color(0x40FFFFFF),
+  //     this.edgeColor = const Color(0xFF8A94A6),
+  //     this.backColor = const Color(0xFF0A0D14),
+  //     this.spineColor = const Color(0xFF0A0D14),
+  //     this.spineWidth = 0.3,
+  //     this.spineQuarterTurns = 3,
+  //     this.shine = true,
+  //     this.shadow = true,
+  //   });
+  //
+  //   /// Case height in px. Null = [heightFactor] of the available height.
+  //   final double? caseHeight;
+  //
+  //   /// Used when [caseHeight] is null.
+  //   final double heightFactor;
+  //
+  //   /// width / height of one case.
+  //   final double aspectRatio;
+  //
+  //   /// Case depth, fraction of height.
+  //   final double thickness;
+  //
+  //   /// Slices used to fake thickness. More = smoother edge, more cost.
+  //   final int thicknessLayers;
+  //
+  //   /// Yaw of each case in radians. Positive turns the face left and shows the
+  //   /// right edge; negative mirrors it.
+  //   final double caseAngle;
+  //
+  //   /// Camera pitch in radians. Positive shows the top edge.
+  //   final double sceneTilt;
+  //
+  //   /// Perspective strength. 0 = flat/orthographic, ~0.35 = natural, 0.8 = dramatic.
+  //   final double perspective;
+  //
+  //   /// Per-item offset along the row (fraction of case height).
+  //   /// stepX right, stepY down (negative = up), stepZ away from viewer.
+  //   final double stepX;
+  //   final double stepY;
+  //   final double stepZ;
+  //
+  //   /// How many items back from the front the row is centred on.
+  //   final double anchor;
+  //
+  //   /// How far the selected case slides out of the row along its own width,
+  //   /// as a fraction of case width. 0 disables.
+  //   final double pullOut;
+  //
+  //   /// Cases drawn ahead of / behind the selected one.
+  //   final int visibleCount;
+  //   final int behindCount;
+  //
+  //   /// Fraction (0..1) of visibleCount where the far fade begins.
+  //   final double fadeStart;
+  //
+  //   /// Blur sigma per item for cases in front (max 8) / far cases (max).
+  //   final double nearBlur;
+  //   final double farBlur;
+  //
+  //   /// 0..1 darkening of far cases.
+  //   final double dimFar;
+  //
+  //   /// Corner radius, fraction of height.
+  //   final double borderRadius;
+  //
+  //   /// Clear-plastic frame width, fraction of case width.
+  //   final double inset;
+  //
+  //   final Color caseColor;
+  //   final Color edgeColor;
+  //   final Color backColor;
+  //   final Color spineColor;
+  //
+  //   /// Spine strip width, fraction of art width. Only used when spineLabelBuilder is set.
+  //   final double spineWidth;
+  //
+  //   /// Rotation of spine text. 3 reads bottom-to-top, 1 reads top-to-bottom.
+  //   final int spineQuarterTurns;
+  //
+  //   /// Moving specular sweep across the cover.
+  //   final bool shine;
+  //
+  //   /// Soft drop shadow under cases near the front.
+  //   final bool shadow;
+  //
+  //   JewelCaseStyle copyWith({
+  //     double? caseHeight,
+  //     double? heightFactor,
+  //     double? aspectRatio,
+  //     double? thickness,
+  //     int? thicknessLayers,
+  //     double? caseAngle,
+  //     double? sceneTilt,
+  //     double? perspective,
+  //     double? stepX,
+  //     double? stepY,
+  //     double? stepZ,
+  //     double? anchor,
+  //     double? pullOut,
+  //     int? visibleCount,
+  //     int? behindCount,
+  //     double? fadeStart,
+  //     double? nearBlur,
+  //     double? farBlur,
+  //     double? dimFar,
+  //     double? borderRadius,
+  //     double? inset,
+  //     Color? caseColor,
+  //     Color? edgeColor,
+  //     Color? backColor,
+  //     Color? spineColor,
+  //     double? spineWidth,
+  //     int? spineQuarterTurns,
+  //     bool? shine,
+  //     bool? shadow,
+  //   }) {
+  //     return JewelCaseStyle(
+  //       caseHeight: caseHeight ?? this.caseHeight,
+  //       heightFactor: heightFactor ?? this.heightFactor,
+  //       aspectRatio: aspectRatio ?? this.aspectRatio,
+  //       thickness: thickness ?? this.thickness,
+  //       thicknessLayers: thicknessLayers ?? this.thicknessLayers,
+  //       caseAngle: caseAngle ?? this.caseAngle,
+  //       sceneTilt: sceneTilt ?? this.sceneTilt,
+  //       perspective: perspective ?? this.perspective,
+  //       stepX: stepX ?? this.stepX,
+  //       stepY: stepY ?? this.stepY,
+  //       stepZ: stepZ ?? this.stepZ,
+  //       anchor: anchor ?? this.anchor,
+  //       pullOut: pullOut ?? this.pullOut,
+  //       visibleCount: visibleCount ?? this.visibleCount,
+  //       behindCount: behindCount ?? this.behindCount,
+  //       fadeStart: fadeStart ?? this.fadeStart,
+  //       nearBlur: nearBlur ?? this.nearBlur,
+  //       farBlur: farBlur ?? this.farBlur,
+  //       dimFar: dimFar ?? this.dimFar,
+  //       borderRadius: borderRadius ?? this.borderRadius,
+  //       inset: inset ?? this.inset,
+  //       caseColor: caseColor ?? this.caseColor,
+  //       edgeColor: edgeColor ?? this.edgeColor,
+  //       backColor: backColor ?? this.backColor,
+  //       spineColor: spineColor ?? this.spineColor,
+  //       spineWidth: spineWidth ?? this.spineWidth,
+  //       spineQuarterTurns: spineQuarterTurns ?? this.spineQuarterTurns,
+  //       shine: shine ?? this.shine,
+  //       shadow: shadow ?? this.shadow,
+  //     );
+  //   }
+  // }
+  //
+  // // ─────────────────────────────────────────────────────────────────────────────
+  // // Controller
+  // // ─────────────────────────────────────────────────────────────────────────────
+  //
+  // /// Drive the row from anywhere. Notifies when the selected index changes.
+  // /// Use [positionListenable] for the continuous (fractional) scroll position.
+  // class JewelCaseController extends ChangeNotifier {
+  //   JewelCaseController({int initialIndex = 0}) : _index = initialIndex;
+  //
+  //   _JewelCaseRowState? _state;
+  //   int _index;
+  //   final ValueNotifier<double> _position = ValueNotifier<double>(0);
+  //
+  //   /// Selected (nearest) index.
+  //   int get currentIndex => _index;
+  //
+  //   /// Fractional scroll position, updates every frame while moving.
+  //   double get position => _position.value;
+  //   ValueListenable<double> get positionListenable => _position;
+  //
+  //   int get itemCount => _state?.widget.itemCount ?? 0;
+  //   bool get canGoNext => _index < itemCount - 1;
+  //   bool get canGoPrev => _index > 0;
+  //
+  //   /// Spring to an index.
+  //   void animateTo(int index) => _state?._goTo(index);
+  //
+  //   /// Teleport to an index.
+  //   void jumpTo(int index) => _state?._jump(index.toDouble());
+  //
+  //   void next() => _state?._goTo((_state?._target ?? _index) + 1);
+  //   void prev() => _state?._goTo((_state?._target ?? _index) - 1);
+  //
+  //   /// Set a fractional position immediately (for custom scrubbers). Pair with [settle].
+  //   void scrollTo(double position) => _state?._jump(position);
+  //
+  //   /// Spring to the nearest index.
+  //   void settle() => _state?._goTo(_position.value.round());
+  //
+  //   /// Slot-machine style scroll to [index] on a timed curve (good for "Pick for me").
+  //   /// Completes when the scroll ends.
+  //   Future<void> spinTo(
+  //       int index, {
+  //         Duration duration = const Duration(milliseconds: 1400),
+  //         Curve curve = Curves.easeInOutCubic,
+  //       }) =>
+  //       _state?._spinTo(index, duration, curve) ?? Future<void>.value();
+  //
+  //   /// Fly a case (default: the selected one) out of the row, e.g. "add to cart".
+  //   ///
+  //   /// Pass [target] (a GlobalKey on the cart button) or [toGlobal] (a global
+  //   /// position) to make the case arc into it while shrinking. With neither, it
+  //   /// flies up off the top. The case then pops back into its slot.
+  //   /// Completes when the flight lands (before the pop-back finishes).
+  //   Future<void> flyOut({int? index, GlobalKey? target, Offset? toGlobal}) =>
+  //       _state?._flyOut(index, target, toGlobal) ?? Future<void>.value();
+  //
+  //   bool get isFlying => _state?._flyIndex != null;
+  //
+  //   void _attach(_JewelCaseRowState s) {
+  //     _state = s;
+  //     _index = s._index;
+  //     _position.value = s._anim.value;
+  //   }
+  //
+  //   void _detach(_JewelCaseRowState s) {
+  //     if (_state == s) _state = null;
+  //   }
+  //
+  //   void _setIndex(int i) {
+  //     _index = i;
+  //     notifyListeners();
+  //   }
+  //
+  //   @override
+  //   void dispose() {
+  //     _position.dispose();
+  //     super.dispose();
+  //   }
+  // }
+  //
+  // // ─────────────────────────────────────────────────────────────────────────────
+  // // Widget
+  // // ─────────────────────────────────────────────────────────────────────────────
+  //
+  // class JewelCaseRow extends StatefulWidget {
+  //   const JewelCaseRow({
+  //     super.key,
+  //     required this.itemCount,
+  //     required this.coverBuilder,
+  //     this.controller,
+  //     this.initialIndex,
+  //     this.onIndexChanged,
+  //     this.onItemTap,
+  //     this.spineLabelBuilder,
+  //     this.spineSubLabelBuilder,
+  //     this.headerBuilder,
+  //     this.controlsBuilder,
+  //     this.style = const JewelCaseStyle(),
+  //     this.spring = const SpringDescription(mass: 1, stiffness: 170, damping: 24),
+  //     this.dragPixelsPerItem = 90,
+  //     this.wheelThreshold = 40,
+  //     this.enableDrag = true,
+  //     this.enableWheel = true,
+  //     this.enableKeyboard = true,
+  //     this.autofocus = false,
+  //     this.clipBehavior = Clip.none,
+  //     this.intro = true,
+  //     this.introDuration = const Duration(milliseconds: 1200),
+  //     this.flyDuration = const Duration(milliseconds: 950),
+  //     this.haptics = true,
+  //   });
+  //
+  //   /// Cases cascade in from the back when the row first appears.
+  //   final bool intro;
+  //   final Duration introDuration;
+  //
+  //   /// Length of [JewelCaseController.flyOut] (flight + pop-back).
+  //   final Duration flyDuration;
+  //
+  //   /// Selection click when the front case changes; impact on fly-out.
+  //   final bool haptics;
+  //
+  //   final int itemCount;
+  //
+  //   /// Cover art for each case. Any widget: Image.asset, Image.network, gradient...
+  //   final JewelCoverBuilder coverBuilder;
+  //
+  //   final JewelCaseController? controller;
+  //   final int? initialIndex;
+  //   final ValueChanged<int>? onIndexChanged;
+  //
+  //   /// Called when a case is tapped. Non-front cases also animate to front.
+  //   final ValueChanged<int>? onItemTap;
+  //
+  //   /// Return text to show on a vertical spine strip (wraps to 2 lines),
+  //   /// or null for no strip.
+  //   final JewelSpineLabelBuilder? spineLabelBuilder;
+  //
+  //   /// Small secondary spine text (e.g. the year), shown at the start of the spine.
+  //   final JewelSpineLabelBuilder? spineSubLabelBuilder;
+  //
+  //   /// Built above the row. Rebuilds when the selected index changes.
+  //   final JewelSlotBuilder? headerBuilder;
+  //
+  //   /// Built below the row. Fully custom controls. Rebuilds when index changes.
+  //   final JewelSlotBuilder? controlsBuilder;
+  //
+  //   final JewelCaseStyle style;
+  //   final SpringDescription spring;
+  //
+  //   /// Drag distance (px) that equals one case.
+  //   final double dragPixelsPerItem;
+  //
+  //   /// Accumulated wheel delta (px) that triggers one step.
+  //   final double wheelThreshold;
+  //
+  //   final bool enableDrag;
+  //   final bool enableWheel;
+  //   final bool enableKeyboard;
+  //   final bool autofocus;
+  //   final Clip clipBehavior;
+  //
+  //   @override
+  //   State<JewelCaseRow> createState() => _JewelCaseRowState();
+  // }
+  //
+  // class _Dims {
+  //   const _Dims(this.w, this.h);
+  //   final double w;
+  //   final double h;
+  //
+  //   factory _Dims.from(BoxConstraints c, JewelCaseStyle s) {
+  //     var h = s.caseHeight ??
+  //         (c.maxHeight.isFinite ? c.maxHeight * s.heightFactor : 240.0);
+  //     var w = h * s.aspectRatio;
+  //     if (c.maxWidth.isFinite) {
+  //       final maxW = c.maxWidth * 0.62;
+  //       if (w > maxW) {
+  //         w = maxW;
+  //         h = w / s.aspectRatio;
+  //       }
+  //     }
+  //     return _Dims(w, h);
+  //   }
+  // }
+  //
+  // class _JewelCaseRowState extends State<JewelCaseRow>
+  //     with TickerProviderStateMixin {
+  //   late final AnimationController _anim;
+  //   late final AnimationController _intro;
+  //   late final AnimationController _fly;
+  //   late JewelCaseController _ctrl;
+  //   late bool _ownsCtrl;
+  //   final FocusNode _focus = FocusNode(debugLabel: 'JewelCaseRow');
+  //   final GlobalKey _sceneKey = GlobalKey();
+  //
+  //   Size _sceneSize = Size.zero;
+  //   int? _flyIndex;
+  //   Offset? _flyTarget; // scene-local
+  //   Completer<void>? _flyLanded;
+  //   bool _landedSignalled = false;
+  //
+  //   late int _index;
+  //   int _target = 0;
+  //   double _wheelAccum = 0;
+  //   DateTime _lastWheel = DateTime.fromMillisecondsSinceEpoch(0);
+  //
+  //   int get _max => math.max(0, widget.itemCount - 1);
+  //
+  //   @override
+  //   void initState() {
+  //     super.initState();
+  //     _ownsCtrl = widget.controller == null;
+  //     _ctrl = widget.controller ?? JewelCaseController();
+  //     _index = (widget.initialIndex ?? _ctrl._index).clamp(0, _max).toInt();
+  //     _target = _index;
+  //     _anim = AnimationController.unbounded(vsync: this, value: _index.toDouble())
+  //       ..addListener(_onTick)
+  //       ..addStatusListener(_onStatus);
+  //     _intro = AnimationController(vsync: this, duration: widget.introDuration);
+  //     if (widget.intro) {
+  //       _intro.forward();
+  //     } else {
+  //       _intro.value = 1;
+  //     }
+  //     _fly = AnimationController(vsync: this, duration: widget.flyDuration)
+  //       ..addListener(_onFlyTick)
+  //       ..addStatusListener((s) {
+  //         if (s == AnimationStatus.completed) _endFly();
+  //       });
+  //     _ctrl._attach(this);
+  //   }
+  //
+  //   @override
+  //   void didUpdateWidget(JewelCaseRow old) {
+  //     super.didUpdateWidget(old);
+  //     if (old.controller != widget.controller) {
+  //       _ctrl._detach(this);
+  //       if (_ownsCtrl) _ctrl.dispose();
+  //       _ownsCtrl = widget.controller == null;
+  //       _ctrl = widget.controller ?? JewelCaseController(initialIndex: _index);
+  //       _ctrl._attach(this);
+  //     }
+  //     if (old.itemCount != widget.itemCount && _anim.value > _max) {
+  //       // Notifies listeners, so never during build.
+  //       WidgetsBinding.instance.addPostFrameCallback((_) {
+  //         if (mounted && _anim.value > _max) _jump(_max.toDouble());
+  //       });
+  //     }
+  //   }
+  //
+  //   @override
+  //   void dispose() {
+  //     _ctrl._detach(this);
+  //     if (_ownsCtrl) _ctrl.dispose();
+  //     _signalLanded();
+  //     _anim.dispose();
+  //     _intro.dispose();
+  //     _fly.dispose();
+  //     _focus.dispose();
+  //     super.dispose();
+  //   }
+  //
+  //   // ── motion ────────────────────────────────────────────────────────────────
+  //
+  //   void _onTick() {
+  //     _ctrl._position.value = _anim.value;
+  //     if (widget.itemCount == 0) return;
+  //     final idx = _anim.value.round().clamp(0, _max).toInt();
+  //     if (idx != _index) {
+  //       _index = idx;
+  //       _ctrl._setIndex(idx);
+  //       widget.onIndexChanged?.call(idx);
+  //       if (widget.haptics && _flyIndex == null) HapticFeedback.selectionClick();
+  //     }
+  //   }
+  //
+  //   Future<void> _spinTo(int i, Duration d, Curve c) async {
+  //     if (widget.itemCount == 0) return;
+  //     _target = i.clamp(0, _max).toInt();
+  //     await _anim.animateTo(_target.toDouble(), duration: d, curve: c);
+  //   }
+  //
+  //   // ── fly out ───────────────────────────────────────────────────────────────
+  //
+  //   static const double _flySplit = 0.72; // flight / pop-back boundary
+  //
+  //   Future<void> _flyOut(int? index, GlobalKey? target, Offset? toGlobal) {
+  //     if (_flyIndex != null || widget.itemCount == 0) return Future<void>.value();
+  //     final i = (index ?? _index).clamp(0, _max).toInt();
+  //
+  //     Offset? local;
+  //     final box = _sceneKey.currentContext?.findRenderObject();
+  //     if (box is RenderBox && box.hasSize) {
+  //       var g = toGlobal;
+  //       if (g == null && target != null) {
+  //         final tb = target.currentContext?.findRenderObject();
+  //         if (tb is RenderBox && tb.hasSize) {
+  //           g = tb.localToGlobal(tb.size.center(Offset.zero));
+  //         }
+  //       }
+  //       if (g != null) local = box.globalToLocal(g);
+  //     }
+  //
+  //     _flyIndex = i;
+  //     _flyTarget = local;
+  //     _landedSignalled = false;
+  //     _flyLanded = Completer<void>();
+  //     if (widget.haptics) HapticFeedback.mediumImpact();
+  //     _fly.forward(from: 0);
+  //     return _flyLanded!.future;
+  //   }
+  //
+  //   void _onFlyTick() {
+  //     if (!_landedSignalled && _fly.value >= _flySplit) _signalLanded();
+  //   }
+  //
+  //   void _signalLanded() {
+  //     _landedSignalled = true;
+  //     final c = _flyLanded;
+  //     if (c != null && !c.isCompleted) c.complete();
+  //   }
+  //
+  //   void _endFly() {
+  //     _signalLanded();
+  //     _flyIndex = null;
+  //     _flyTarget = null;
+  //     _fly.value = 0; // notifies → rebuild without the fly transform
+  //   }
+  //
+  //   // Spring tolerance leaves the value a hair off the target; snap exactly.
+  //   void _onStatus(AnimationStatus status) {
+  //     if (status == AnimationStatus.completed) {
+  //       final t = _target.toDouble();
+  //       if (_anim.value != t && (_anim.value - t).abs() < 0.02) _anim.value = t;
+  //     }
+  //   }
+  //
+  //   void _goTo(int i, {double velocity = 0}) {
+  //     if (widget.itemCount == 0) return;
+  //     _target = i.clamp(0, _max).toInt();
+  //     _anim.animateWith(
+  //       SpringSimulation(widget.spring, _anim.value, _target.toDouble(), velocity),
+  //     );
+  //   }
+  //
+  //   void _jump(double v) {
+  //     _anim.stop();
+  //     final p = v.clamp(0, _max).toDouble();
+  //     _target = p.round();
+  //     _anim.value = p;
+  //   }
+  //
+  //   void _tap(int i) {
+  //     widget.onItemTap?.call(i);
+  //     if (i != _index) _goTo(i);
+  //   }
+  //
+  //   // ── input ─────────────────────────────────────────────────────────────────
+  //
+  //   void _dragStart(DragStartDetails _) => _anim.stop();
+  //
+  //   void _dragUpdate(DragUpdateDetails d) {
+  //     var delta = -d.delta.dx / widget.dragPixelsPerItem;
+  //     final v = _anim.value;
+  //     if ((v < 0 && delta < 0) || (v > _max && delta > 0)) delta *= 0.35;
+  //     _anim.value = v + delta;
+  //   }
+  //
+  //   void _dragEnd(DragEndDetails d) {
+  //     final v = -d.velocity.pixelsPerSecond.dx / widget.dragPixelsPerItem;
+  //     _goTo((_anim.value + v * 0.15).round(), velocity: v);
+  //   }
+  //
+  //   void _dragCancel() => _goTo(_anim.value.round());
+  //
+  //   void _onSignal(PointerSignalEvent e) {
+  //     if (!widget.enableWheel || e is! PointerScrollEvent) return;
+  //     GestureBinding.instance.pointerSignalResolver.register(e, (event) {
+  //       final se = event as PointerScrollEvent;
+  //       final now = DateTime.now();
+  //       if (now.difference(_lastWheel) > const Duration(milliseconds: 250)) {
+  //         _wheelAccum = 0;
+  //       }
+  //       _lastWheel = now;
+  //       final dx = se.scrollDelta.dx, dy = se.scrollDelta.dy;
+  //       _wheelAccum += dx.abs() > dy.abs() ? dx : dy;
+  //       if (_wheelAccum.abs() >= widget.wheelThreshold) {
+  //         _goTo(_target + (_wheelAccum > 0 ? 1 : -1));
+  //         _wheelAccum = 0;
+  //       }
+  //     });
+  //   }
+  //
+  //   KeyEventResult _onKey(FocusNode node, KeyEvent e) {
+  //     if (!widget.enableKeyboard || e is KeyUpEvent) return KeyEventResult.ignored;
+  //     final k = e.logicalKey;
+  //     if (k == LogicalKeyboardKey.arrowRight || k == LogicalKeyboardKey.arrowDown) {
+  //       _goTo(_target + 1);
+  //       return KeyEventResult.handled;
+  //     }
+  //     if (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowUp) {
+  //       _goTo(_target - 1);
+  //       return KeyEventResult.handled;
+  //     }
+  //     if (k == LogicalKeyboardKey.home) {
+  //       _goTo(0);
+  //       return KeyEventResult.handled;
+  //     }
+  //     if (k == LogicalKeyboardKey.end) {
+  //       _goTo(_max);
+  //       return KeyEventResult.handled;
+  //     }
+  //     return KeyEventResult.ignored;
+  //   }
+  //
+  //   // ── build ─────────────────────────────────────────────────────────────────
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     Widget scene = LayoutBuilder(builder: (context, c) {
+  //       final dims = _Dims.from(c, widget.style);
+  //       _sceneSize = Size(
+  //         c.maxWidth.isFinite ? c.maxWidth : 0,
+  //         c.maxHeight.isFinite ? c.maxHeight : 0,
+  //       );
+  //       return AnimatedBuilder(
+  //         animation: Listenable.merge([_anim, _intro, _fly]),
+  //         builder: (context, _) => _buildScene(context, dims),
+  //       );
+  //     });
+  //
+  //     if (widget.enableDrag) {
+  //       scene = GestureDetector(
+  //         behavior: HitTestBehavior.opaque,
+  //         onHorizontalDragStart: _dragStart,
+  //         onHorizontalDragUpdate: _dragUpdate,
+  //         onHorizontalDragEnd: _dragEnd,
+  //         onHorizontalDragCancel: _dragCancel,
+  //         child: scene,
+  //       );
+  //     }
+  //     scene = ClipRect(
+  //       key: _sceneKey,
+  //       clipBehavior: widget.clipBehavior,
+  //       child: scene,
+  //     );
+  //
+  //     return Focus(
+  //       focusNode: _focus,
+  //       autofocus: widget.autofocus,
+  //       onKeyEvent: _onKey,
+  //       child: Listener(
+  //         onPointerDown: (_) => _focus.requestFocus(),
+  //         onPointerSignal: _onSignal,
+  //         child: Column(
+  //           crossAxisAlignment: CrossAxisAlignment.stretch,
+  //           children: [
+  //             if (widget.headerBuilder != null)
+  //               ListenableBuilder(
+  //                 listenable: _ctrl,
+  //                 builder: (c, _) => widget.headerBuilder!(c, _ctrl),
+  //               ),
+  //             Expanded(child: scene),
+  //             if (widget.controlsBuilder != null)
+  //               ListenableBuilder(
+  //                 listenable: _ctrl,
+  //                 builder: (c, _) => widget.controlsBuilder!(c, _ctrl),
+  //               ),
+  //           ],
+  //         ),
+  //       ),
+  //     );
+  //   }
+  //
+  //   Widget _buildScene(BuildContext context, _Dims dm) {
+  //     if (widget.itemCount == 0) return const SizedBox.expand();
+  //     final s = widget.style;
+  //     final pos = _anim.value;
+  //     final first = math.max(0, (pos - s.behindCount - 1).floor());
+  //     final last = math.min(widget.itemCount - 1, (pos + s.visibleCount).ceil());
+  //
+  //     final items = <Widget>[];
+  //     Widget? flying;
+  //     // Far first, near last → correct painter order.
+  //     for (var i = last; i >= first; i--) {
+  //       final d = i - pos;
+  //       if (d <= -s.behindCount || d >= s.visibleCount) continue;
+  //       final item = _buildItem(context, i, d, dm);
+  //       if (item == null) continue;
+  //       // The flying case is painted above everything else.
+  //       if (i == _flyIndex) {
+  //         flying = item;
+  //       } else {
+  //         items.add(item);
+  //       }
+  //     }
+  //     if (flying != null) items.add(flying);
+  //     return Stack(
+  //       alignment: Alignment.center,
+  //       clipBehavior: Clip.none,
+  //       children: items,
+  //     );
+  //   }
+  //
+  //   Widget? _buildItem(BuildContext context, int i, double d, _Dims dm) {
+  //     final s = widget.style;
+  //
+  //     // Opacity
+  //     double opacity;
+  //     if (d >= 0) {
+  //       final f = d / s.visibleCount;
+  //       opacity = f <= s.fadeStart ? 1 : 1 - (f - s.fadeStart) / (1 - s.fadeStart);
+  //     } else {
+  //       opacity = 1 - (-d / s.behindCount) * 0.85;
+  //     }
+  //     opacity = opacity.clamp(0.0, 1.0);
+  //
+  //     // Intro: cases cascade in from the back, nearest first.
+  //     var slide = 0.0;
+  //     if (_intro.value < 1) {
+  //       const stagger = 0.45;
+  //       final f = (math.max(d, 0.0) / s.visibleCount).clamp(0.0, 1.0);
+  //       final raw = ((_intro.value - f * stagger) / (1 - stagger)).clamp(0.0, 1.0);
+  //       final e = Curves.easeOutCubic.transform(raw.toDouble());
+  //       slide = (1 - e) * 5;
+  //       opacity *= e;
+  //     }
+  //     if (opacity < 0.01) return null;
+  //
+  //     // Blur
+  //     final sigma = d >= 0
+  //         ? s.farBlur * (d / s.visibleCount)
+  //         : math.min(s.nearBlur * -d, 8.0);
+  //
+  //     final dim = d > 0 ? (d / s.visibleCount * s.dimFar).clamp(0.0, 1.0) : 0.0;
+  //
+  //     final base = _itemMatrix(d, dm, slide: slide);
+  //     final layers = d.abs() > 4 ? math.min(s.thicknessLayers, 4) : s.thicknessLayers;
+  //     final n = math.max(2, layers);
+  //     final t = dm.h * s.thickness;
+  //
+  //     final slices = <Widget>[];
+  //     for (var k = n - 1; k >= 0; k--) {
+  //       final f = k / (n - 1); // 0 = front, 1 = back
+  //       final z = -t / 2 + t * f; // +z is away from viewer
+  //       final m = base.clone()..multiply(Matrix4.translationValues(0, 0, z));
+  //
+  //       final Widget face;
+  //       if (k == 0) {
+  //         face = _front(context, i, d, dm, dim);
+  //       } else if (k == n - 1) {
+  //         face = _back(d, dm);
+  //       } else {
+  //         face = _edge(dm, f);
+  //       }
+  //       slices.add(Transform(
+  //         alignment: Alignment.center,
+  //         transform: m,
+  //         child: SizedBox(width: dm.w, height: dm.h, child: face),
+  //       ));
+  //     }
+  //
+  //     Widget item = Stack(
+  //       alignment: Alignment.center,
+  //       clipBehavior: Clip.none,
+  //       children: slices,
+  //     );
+  //     if (i == _flyIndex) {
+  //       item = IgnorePointer(child: _applyFly(item, d, dm));
+  //     }
+  //     if (sigma > 0.25 && i != _flyIndex) {
+  //       item = ImageFiltered(
+  //         imageFilter: ImageFilter.blur(
+  //           sigmaX: sigma,
+  //           sigmaY: sigma,
+  //           tileMode: TileMode.decal,
+  //         ),
+  //         child: item,
+  //       );
+  //     }
+  //     if (opacity < 0.995) item = Opacity(opacity: opacity, child: item);
+  //     if (d > 3) item = IgnorePointer(child: item);
+  //     return item;
+  //   }
+  //
+  //   /// Flight (arc → shrink → fade into the target), then a pop-back in place.
+  //   Widget _applyFly(Widget item, double d, _Dims dm) {
+  //     final t = _fly.value;
+  //     final proj = MatrixUtils.transformPoint(_itemMatrix(d, dm), Offset.zero);
+  //
+  //     Matrix4 about(Offset move, double angle, double scale) {
+  //       return Matrix4.translationValues(move.dx + proj.dx, move.dy + proj.dy, 0)
+  //           .multiplied(Matrix4.rotationZ(angle))
+  //           .multiplied(Matrix4.diagonal3Values(scale, scale, 1))
+  //           .multiplied(Matrix4.translationValues(-proj.dx, -proj.dy, 0));
+  //     }
+  //
+  //     if (t <= _flySplit) {
+  //       final u = Curves.easeInOutCubic.transform(t / _flySplit);
+  //       final size = _sceneSize;
+  //       final from = Offset(size.width / 2, size.height / 2) + proj;
+  //       final to = _flyTarget ?? Offset(size.width / 2, -dm.h * 0.6);
+  //       final arc = Offset(0, -math.sin(math.pi * u) * dm.h * 0.25);
+  //       final move = (to - from) * u + arc;
+  //       final fade = u < 0.8 ? 1.0 : 1 - (u - 0.8) / 0.2;
+  //       return Opacity(
+  //         opacity: fade.clamp(0.0, 1.0).toDouble(),
+  //         child: Transform(
+  //           alignment: Alignment.center,
+  //           transform: about(move, u * 0.45, 1 - 0.88 * u),
+  //           child: item,
+  //         ),
+  //       );
+  //     }
+  //
+  //     final p = ((t - _flySplit) / (1 - _flySplit)).clamp(0.0, 1.0).toDouble();
+  //     final u = Curves.easeOutBack.transform(p);
+  //     return Opacity(
+  //       opacity: Curves.easeOut.transform(p).clamp(0.0, 1.0).toDouble(),
+  //       child: Transform(
+  //         alignment: Alignment.center,
+  //         transform: about(Offset.zero, 0, 0.7 + 0.3 * u),
+  //         child: item,
+  //       ),
+  //     );
+  //   }
+  //
+  //   Matrix4 _itemMatrix(double d, _Dims dm, {double slide = 0}) {
+  //     final s = widget.style;
+  //     final focal = dm.h / math.max(s.perspective, 0.0001);
+  //     final z = math.max((d + slide) * s.stepZ * dm.h, -focal * 0.55);
+  //     final off = d + slide - s.anchor;
+  //
+  //     // Selected case slides out along its own width (smoothstep in |d|).
+  //     final p = (1 - d.abs()).clamp(0.0, 1.0).toDouble();
+  //     final pull = p * p * (3 - 2 * p) * s.pullOut * dm.w;
+  //
+  //     return Matrix4.identity()
+  //       ..setEntry(3, 2, s.perspective / dm.h)
+  //       ..rotateX(s.sceneTilt)
+  //       ..multiply(Matrix4.translationValues(
+  //         off * s.stepX * dm.h,
+  //         off * s.stepY * dm.h,
+  //         z,
+  //       ))
+  //       ..rotateY(s.caseAngle)
+  //       ..multiply(Matrix4.translationValues(pull, 0, 0));
+  //   }
+  //
+  //   // ── faces ─────────────────────────────────────────────────────────────────
+  //
+  //   BorderRadius _radius(_Dims dm) =>
+  //       BorderRadius.circular(dm.h * widget.style.borderRadius);
+  //
+  //   Widget _edge(_Dims dm, double f) {
+  //     final s = widget.style;
+  //     return DecoratedBox(
+  //       decoration: BoxDecoration(
+  //         borderRadius: _radius(dm),
+  //         color: Color.lerp(s.edgeColor, s.backColor, f * 0.8),
+  //       ),
+  //     );
+  //   }
+  //
+  //   Widget _back(double d, _Dims dm) {
+  //     final s = widget.style;
+  //     final showShadow = s.shadow && d > -1.5 && d < 4;
+  //     return DecoratedBox(
+  //       decoration: BoxDecoration(
+  //         borderRadius: _radius(dm),
+  //         color: s.backColor,
+  //         boxShadow: showShadow
+  //             ? [
+  //           BoxShadow(
+  //             color: Colors.black.withAlpha(120),
+  //             blurRadius: dm.h * 0.10,
+  //             offset: Offset(0, dm.h * 0.035),
+  //           ),
+  //         ]
+  //             : null,
+  //       ),
+  //     );
+  //   }
+  //
+  //   Widget _spine(String label, String? sub, double spineW) {
+  //     final s = widget.style;
+  //     final fs = math.max(6.0, spineW * 0.17);
+  //     return SizedBox(
+  //       width: spineW,
+  //       child: ColoredBox(
+  //         color: s.spineColor,
+  //         child: Center(
+  //           child: RotatedBox(
+  //             quarterTurns: s.spineQuarterTurns,
+  //             child: Padding(
+  //               padding: EdgeInsets.all(spineW * 0.14),
+  //               child: Row(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 crossAxisAlignment: CrossAxisAlignment.center,
+  //                 children: [
+  //                   if (sub != null) ...[
+  //                     Text(
+  //                       sub,
+  //                       maxLines: 1,
+  //                       style: TextStyle(
+  //                         color: Colors.white.withAlpha(150),
+  //                         fontSize: math.max(5.0, fs * 0.8),
+  //                         fontWeight: FontWeight.w500,
+  //                         height: 1,
+  //                         decoration: TextDecoration.none,
+  //                       ),
+  //                     ),
+  //                     SizedBox(width: spineW * 0.25),
+  //                   ],
+  //                   Flexible(
+  //                     child: Text(
+  //                       label.toUpperCase(),
+  //                       maxLines: 2,
+  //                       overflow: TextOverflow.ellipsis,
+  //                       style: TextStyle(
+  //                         color: Colors.white.withAlpha(235),
+  //                         fontSize: fs,
+  //                         fontWeight: FontWeight.w800,
+  //                         letterSpacing: fs * 0.06,
+  //                         height: 1.15,
+  //                         decoration: TextDecoration.none,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //   }
+  //
+  //   Widget _front(BuildContext context, int i, double d, _Dims dm, double dim) {
+  //     final s = widget.style;
+  //     final r = _radius(dm);
+  //     final inset = dm.w * s.inset;
+  //     final label = widget.spineLabelBuilder?.call(i);
+  //     final sub = widget.spineSubLabelBuilder?.call(i);
+  //     final artW = dm.w - inset * 2;
+  //     final spineW = artW * s.spineWidth;
+  //
+  //     final art = Row(
+  //       children: [
+  //         if (label != null) _spine(label, sub, spineW),
+  //         Expanded(child: widget.coverBuilder(context, i)),
+  //       ],
+  //     );
+  //
+  //     final c = (0.55 - d * 0.18).clamp(0.05, 0.95).toDouble();
+  //
+  //     return GestureDetector(
+  //       onTap: () => _tap(i),
+  //       child: ClipRRect(
+  //         borderRadius: r,
+  //         child: Stack(
+  //           fit: StackFit.expand,
+  //           children: [
+  //             ColoredBox(color: s.caseColor),
+  //             Padding(
+  //               padding: EdgeInsets.all(inset),
+  //               child: ClipRRect(
+  //                 borderRadius: BorderRadius.circular(inset * 0.5),
+  //                 child: art,
+  //               ),
+  //             ),
+  //             if (s.shine) ...[
+  //               // static glass sheen
+  //               IgnorePointer(
+  //                 child: DecoratedBox(
+  //                   decoration: BoxDecoration(
+  //                     gradient: LinearGradient(
+  //                       begin: Alignment.topLeft,
+  //                       end: Alignment.bottomRight,
+  //                       colors: [
+  //                         Colors.white.withAlpha(46),
+  //                         Colors.white.withAlpha(0),
+  //                       ],
+  //                       stops: const [0, 0.38],
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               // moving specular sweep
+  //               IgnorePointer(
+  //                 child: DecoratedBox(
+  //                   decoration: BoxDecoration(
+  //                     gradient: LinearGradient(
+  //                       begin: Alignment.topLeft,
+  //                       end: Alignment.bottomRight,
+  //                       colors: [
+  //                         Colors.white.withAlpha(0),
+  //                         Colors.white.withAlpha(52),
+  //                         Colors.white.withAlpha(0),
+  //                       ],
+  //                       stops: [
+  //                         (c - 0.28).clamp(0.0, 1.0).toDouble(),
+  //                         c,
+  //                         (c + 0.28).clamp(0.0, 1.0).toDouble(),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //             if (dim > 0.01)
+  //               IgnorePointer(child: ColoredBox(color: Color.fromRGBO(0, 0, 0, dim))),
+  //             IgnorePointer(
+  //               child: DecoratedBox(
+  //                 decoration: BoxDecoration(
+  //                   borderRadius: r,
+  //                   border: Border.all(color: Colors.white.withAlpha(90), width: 1),
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+  //
+  // // ─────────────────────────────────────────────────────────────────────────────
+  // // Optional extras: glass button + tick scrubber
+  // // ─────────────────────────────────────────────────────────────────────────────
+  //
+  // /// Frosted glass button. Circle by default; pass [width] for a pill.
+  // class JewelCaseGlassButton extends StatelessWidget {
+  //   const JewelCaseGlassButton({
+  //     super.key,
+  //     required this.onPressed,
+  //     required this.child,
+  //     this.size = 52,
+  //     this.width,
+  //     this.tooltip,
+  //   });
+  //
+  //   final VoidCallback? onPressed;
+  //   final Widget child;
+  //   final double size;
+  //   final double? width;
+  //   final String? tooltip;
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     final radius = BorderRadius.circular(size / 2);
+  //     Widget button = Opacity(
+  //       opacity: onPressed == null ? 0.4 : 1,
+  //       child: ClipRRect(
+  //         borderRadius: radius,
+  //         child: BackdropFilter(
+  //           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+  //           child: Material(
+  //             color: Colors.white.withAlpha(30),
+  //             shape: RoundedRectangleBorder(
+  //               borderRadius: radius,
+  //               side: BorderSide(color: Colors.white.withAlpha(46)),
+  //             ),
+  //             child: InkWell(
+  //               onTap: onPressed,
+  //               customBorder: RoundedRectangleBorder(borderRadius: radius),
+  //               child: SizedBox(
+  //                 width: width ?? size,
+  //                 height: size,
+  //                 child: IconTheme(
+  //                   data: const IconThemeData(color: Colors.white, size: 22),
+  //                   child: DefaultTextStyle(
+  //                     style: const TextStyle(
+  //                       color: Colors.white,
+  //                       fontSize: 15,
+  //                       fontWeight: FontWeight.w600,
+  //                     ),
+  //                     child: Center(child: child),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //     if (tooltip != null) button = Tooltip(message: tooltip!, child: button);
+  //     return button;
+  //   }
+  // }
+  //
+  // /// Waveform-style tick scrubber bound to a [JewelCaseController].
+  // /// Drag to scroll the row, tap to jump.
+  // class JewelCaseScrubber extends StatelessWidget {
+  //   const JewelCaseScrubber({
+  //     super.key,
+  //     required this.controller,
+  //     this.height = 44,
+  //     this.tickSpacing = 6,
+  //     this.color = const Color(0x55FFFFFF),
+  //     this.activeColor = Colors.white,
+  //   });
+  //
+  //   final JewelCaseController controller;
+  //   final double height;
+  //   final double tickSpacing;
+  //   final Color color;
+  //   final Color activeColor;
+  //
+  //   @override
+  //   Widget build(BuildContext context) {
+  //     return LayoutBuilder(builder: (context, c) {
+  //       final w = c.maxWidth;
+  //       double toPos(double x) =>
+  //           (x / w).clamp(0.0, 1.0) * math.max(0, controller.itemCount - 1);
+  //       return GestureDetector(
+  //         behavior: HitTestBehavior.opaque,
+  //         onTapDown: (d) => controller.animateTo(toPos(d.localPosition.dx).round()),
+  //         onHorizontalDragStart: (d) => controller.scrollTo(toPos(d.localPosition.dx)),
+  //         onHorizontalDragUpdate: (d) => controller.scrollTo(toPos(d.localPosition.dx)),
+  //         onHorizontalDragEnd: (_) => controller.settle(),
+  //         onHorizontalDragCancel: controller.settle,
+  //         child: ValueListenableBuilder<double>(
+  //           valueListenable: controller.positionListenable,
+  //           builder: (context, pos, _) => CustomPaint(
+  //             size: Size(w, height),
+  //             painter: _ScrubberPainter(
+  //               position: pos,
+  //               count: controller.itemCount,
+  //               spacing: tickSpacing,
+  //               color: color,
+  //               activeColor: activeColor,
+  //             ),
+  //           ),
+  //         ),
+  //       );
+  //     });
+  //   }
+  // }
+  //
+  // class _ScrubberPainter extends CustomPainter {
+  //   _ScrubberPainter({
+  //     required this.position,
+  //     required this.count,
+  //     required this.spacing,
+  //     required this.color,
+  //     required this.activeColor,
+  //   });
+  //
+  //   final double position;
+  //   final int count;
+  //   final double spacing;
+  //   final Color color;
+  //   final Color activeColor;
+  //
+  //   @override
+  //   void paint(Canvas canvas, Size size) {
+  //     final n = math.max(2, (size.width / spacing).floor());
+  //     final m = count <= 1 ? 0.0 : position / (count - 1) * size.width;
+  //     final p = Paint()
+  //       ..strokeCap = StrokeCap.round
+  //       ..strokeWidth = 1.4;
+  //
+  //     for (var k = 0; k < n; k++) {
+  //       final x = (k + 0.5) * size.width / n;
+  //       final dist = (x - m).abs() / (size.width * 0.14);
+  //       final bump = math.exp(-dist * dist);
+  //       final h = size.height * (0.22 + 0.55 * bump);
+  //       p.color = Color.lerp(color, activeColor, bump)!;
+  //       canvas.drawLine(Offset(x, size.height - h), Offset(x, size.height), p);
+  //     }
+  //
+  //     p
+  //       ..color = activeColor
+  //       ..strokeWidth = 2;
+  //     canvas.drawLine(Offset(m, 5), Offset(m, size.height), p);
+  //     canvas.drawCircle(Offset(m, 4), 3.5, Paint()..color = activeColor);
+  //   }
+  //
+  //   @override
+  //   bool shouldRepaint(_ScrubberPainter o) =>
+  //       o.position != position ||
+  //           o.count != count ||
+  //           o.spacing != spacing ||
+  //           o.color != color ||
+  //           o.activeColor != activeColor;
+  // }
+  
+  // clothes_store_demo.dart
+  //
+  // Mobile fashion-store page built on PullOutRow (pull_out_row.dart, same folder).
+  // Zero extra packages.
+  //
+  // Animations included:
+  //   • staggered intro (top bar, chips, product row)
+  //   • fly-to-bag: product thumbnail arcs from the button into the bag icon
+  //   • bag icon bounce + badge pop when the item lands
+  //   • animated cart sheet (swipe to remove, qty steppers, rolling total,
+  //     checkout success morph)
+  //   • sliding size selector, press-scale on buttons
+  //   • heart pop + ring burst
+  //   • category switch cross-fade
+  //   • colour-matched background that follows the poster while dragging
+  //
+  // Run:  void main() => runApp(const ClothesStoreApp());
+  //
+  // Android release builds need <uses-permission android:name="android.permission.INTERNET"/>.
+  
+  import 'dart:async';
+  import 'dart:math' as math;
+  import 'dart:ui' as ui;
+  
+  import 'package:flutter/foundation.dart';
+  import 'package:flutter/material.dart';
+  import 'package:flutter/services.dart';
+  import 'dart:math' as math;
+  import 'dart:ui' show ImageFilter;
+  
+  import 'package:flutter/foundation.dart';
+  import 'package:flutter/gestures.dart';
+  import 'package:flutter/material.dart';
+  import 'package:flutter/physics.dart';
+  import 'package:flutter/services.dart';
+  
+  
+  void main() => runApp(const ClothesStoreApp());
+  
+  class ClothesStoreApp extends StatelessWidget {
+    const ClothesStoreApp({super.key});
+  
+    @override
+    Widget build(BuildContext context) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(useMaterial3: true),
+        home: const StorePage(),
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Data — replace with your API / database
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class Product {
+    const Product({
+      required this.id,
+      required this.name,
+      required this.category,
+      required this.price,
+      required this.rating,
+      required this.image,
+      this.oldPrice,
+      this.tag,
+    });
+  
+    final int id;
+    final String name;
+    final String category;
+    final double price;
+    final double? oldPrice;
+    final double rating;
+    final String? tag;
+    final String image;
+  }
+  
+  class CartLine {
+    CartLine(this.product, this.size);
+    final Product product;
+    final String size;
+    int qty = 1;
+  }
+  
+  String _u(String id) =>
+      'https://images.unsplash.com/photo-$id?auto=format&fit=crop&w=700&h=950&q=80';
+  
+  final products = <Product>[
+    Product(
+      id: 1,
+      name: 'Oversized Linen Shirt',
+      category: 'Women',
+      price: 59,
+      oldPrice: 79,
+      rating: 4.8,
+      tag: 'NEW',
+      image: _u('1598554747436-c9293d6a588f'),
+    ),
+    Product(
+      id: 2,
+      name: 'Classic Denim Jacket',
+      category: 'Men',
+      price: 99,
+      oldPrice: 129,
+      rating: 4.9,
+      tag: 'TRENDING',
+      image: _u('1551028719-00167b16eac5'),
+    ),
+    Product(
+      id: 3,
+      name: 'Minimal Cotton T-Shirt',
+      category: 'Men',
+      price: 35,
+      rating: 4.6,
+      image: _u('1521572163474-6864f9cf17ab'),
+    ),
+    Product(
+      id: 4,
+      name: 'Elegant Summer Dress',
+      category: 'Women',
+      price: 89,
+      oldPrice: 110,
+      rating: 4.7,
+      tag: 'SALE',
+      image: _u('1515372039744-b8f02a3ae446'),
+    ),
+    Product(
+      id: 5,
+      name: 'Streetwear Hoodie',
+      category: 'Men',
+      price: 69,
+      rating: 4.5,
+      tag: 'POPULAR',
+      image: _u('1556821840-3a63f95609a7'),
+    ),
+    Product(
+      id: 6,
+      name: 'Tailored Blazer',
+      category: 'Women',
+      price: 139,
+      rating: 4.9,
+      tag: 'PREMIUM',
+      image: _u('1591047139829-d91aecb6caea'),
+    ),
+    Product(
+      id: 7,
+      name: 'Relaxed Fit Jeans',
+      category: 'Men',
+      price: 79,
+      oldPrice: 95,
+      rating: 4.6,
+      tag: '-15%',
+      image: _u('1542272604-787c3835535d'),
+    ),
+    Product(
+      id: 8,
+      name: 'Knit Cardigan',
+      category: 'Women',
+      price: 75,
+      rating: 4.8,
+      tag: 'NEW',
+      image: _u('1434389677669-e08b4cac3105'),
+    ),
+    Product(
+      id: 9,
+      name: 'Casual Bomber Jacket',
+      category: 'Men',
+      price: 119,
+      rating: 4.7,
+      image: _u('1591047139829-d91aecb6caea'),
+    ),
+    Product(
+      id: 10,
+      name: 'Pleated Midi Skirt',
+      category: 'Women',
+      price: 65,
+      rating: 4.5,
+      image: _u('1583496661160-fb5886a0aaaa'),
+    ),
+  ];
+  
+  const categories = [
+    'All',
+    'Women',
+    'Men',
+  ];
+  
+  
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Image colour extraction (shares Flutter's image cache with the card)
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  Future<Color?> extractImageColor(String url) async {
+    final stream = NetworkImage(url).resolve(ImageConfiguration.empty);
+    final done = Completer<ui.Image?>();
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+          (info, _) {
+        if (!done.isCompleted) done.complete(info.image.clone());
+      },
+      onError: (_, __) {
+        if (!done.isCompleted) done.complete(null);
+      },
+    );
+    stream.addListener(listener);
+    final img = await done.future
+        .timeout(const Duration(seconds: 20), onTimeout: () => null);
+    stream.removeListener(listener);
+    if (img == null) return null;
+  
+    final data = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final w = img.width, h = img.height;
+    img.dispose();
+    if (data == null) return null;
+  
+    final total = w * h;
+    final stride = (total ~/ 4000).clamp(1, total).toInt();
+    double r = 0, g = 0, b = 0, wsum = 0;
+    for (var p = 0; p < total; p += stride) {
+      final o = p * 4;
+      final pr = data.getUint8(o), pg = data.getUint8(o + 1), pb = data.getUint8(o + 2);
+      final hsv = HSVColor.fromColor(Color.fromARGB(255, pr, pg, pb));
+      if (hsv.value < 0.12) continue;
+      final weight = hsv.saturation * hsv.value + 0.03;
+      r += pr * weight;
+      g += pg * weight;
+      b += pb * weight;
+      wsum += weight;
+    }
+    if (wsum == 0) return null;
+  
+    final hsl = HSLColor.fromColor(
+      Color.fromARGB(255, (r / wsum).round(), (g / wsum).round(), (b / wsum).round()),
+    );
+    return hsl
+        .withSaturation(hsl.saturation.clamp(0.4, 0.8).toDouble())
+        .withLightness(hsl.lightness.clamp(0.26, 0.40).toDouble())
+        .toColor();
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Responsive style (phone first)
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  
+    PullOutStyle responsiveStyle(MediaQueryData mq) {
+    const aspect = 0.72;
+    const pullOut = 0.95;
+    const angle = 0.55;
+    const stepX = 0.40;
+  
+    final w = mq.size.width;
+    final compact = w < 600;
+    final widthFrac = compact ? 0.56 : (w < 1024 ? 0.34 : 0.24);
+  
+    // top bar + chips + product header + purchase panel
+    final reserved = mq.padding.vertical + (compact ? 360 : 380);
+    final sceneH = mq.size.height - reserved;
+  
+    final h = math
+        .min(w * widthFrac / aspect, sceneH * 0.78)
+        .clamp(150.0, 640.0)
+        .toDouble();
+  
+    return PullOutStyle(
+      itemHeight: h,
+      aspectRatio: aspect,
+      itemAngle: angle,
+      sceneTilt: 0.28,
+      perspective: 0.03,
+      stepX: stepX,
+      stepY: -0.01,
+      stepZ: 0.4,
+      anchor: pullOut * aspect * math.cos(angle) / stepX,
+      pullOut: pullOut,
+      pullScale: 1.05,
+      visibleCount: 4,
+      behindCount: 4,
+      fadeStart: 0.1,
+      nearBlur: 0.1,
+      farBlur: compact ? 1.8 : 2.5,
+      dimFar: 0.2,
+    );
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Small animation helpers
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  /// Fades / slides / scales its child in during part of a parent animation.
+  class _Reveal extends StatelessWidget {
+    const _Reveal({
+      required this.anim,
+      required this.begin,
+      required this.end,
+      required this.child,
+      this.dy = 20,
+      this.scaleFrom = 1,
+    });
+  
+    final Animation<double> anim;
+    final double begin;
+    final double end;
+    final double dy;
+    final double scaleFrom;
+    final Widget child;
+  
+    @override
+    Widget build(BuildContext context) {
+      final curve = Interval(begin, end, curve: Curves.easeOutCubic);
+      return AnimatedBuilder(
+        animation: anim,
+        child: child,
+        builder: (_, child) {
+          final t = curve.transform(anim.value);
+          return Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(0, dy * (1 - t)),
+              child: Transform.scale(
+                scale: scaleFrom + (1 - scaleFrom) * t,
+                child: child,
+              ),
+            ),
+          );
+        },
+      );
+    }
+  }
+  
+  /// Shrinks slightly while pressed.
+  class _PressScale extends StatefulWidget {
+    const _PressScale({required this.onTap, required this.child, this.scale = 0.95});
+    final VoidCallback? onTap;
+    final Widget child;
+    final double scale;
+  
+    @override
+    State<_PressScale> createState() => _PressScaleState();
+  }
+  
+  class _PressScaleState extends State<_PressScale> {
+    bool _down = false;
+  
+    @override
+    Widget build(BuildContext context) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _down = true),
+        onTapUp: (_) => setState(() => _down = false),
+        onTapCancel: () => setState(() => _down = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _down ? widget.scale : 1,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: widget.child,
+        ),
+      );
+    }
+  }
+  
+  class _Flight {
+    _Flight(this.ctrl, this.entry);
+    final AnimationController ctrl;
+    final OverlayEntry entry;
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Page
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class StorePage extends StatefulWidget {
+    const StorePage({super.key});
+  
+    @override
+    State<StorePage> createState() => _StorePageState();
+  }
+  
+  class _StorePageState extends State<StorePage> with TickerProviderStateMixin {
+    static const _bg = Color(0xFF08090D);
+    static const _fallback = Color(0xFF1E2230);
+  
+    final controller = PullOutController();
+    late final AnimationController _intro =
+    AnimationController(vsync: this, duration: const Duration(milliseconds: 1300));
+  
+    final Map<int, Color> colors = {};
+    final Set<int> favorites = {};
+    final List<CartLine> lines = [];
+    final List<_Flight> _flights = [];
+  
+    final _bagKey = GlobalKey();
+    final _addKey = GlobalKey();
+  
+    String chip = 'All'; // highlighted chip
+    String category = 'All'; // applied filter (changes after the fade-out)
+    String size = 'M';
+    bool rowShown = true;
+    int _catToken = 0;
+  
+    int bagBump = 0;
+    int? justAdded;
+    int? favBurstId;
+    Timer? _addedTimer;
+    Timer? _burstTimer;
+  
+    int get cartCount => lines.fold(0, (a, l) => a + l.qty);
+  
+    List<Product> get visible => category == 'All'
+        ? products
+        : products.where((p) => p.category == category).toList();
+  
+    @override
+    void initState() {
+      super.initState();
+      SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+      _intro.forward();
+      for (final p in products) {
+        extractImageColor(p.image).then((c) {
+          if (mounted && c != null) setState(() => colors[p.id] = c);
+        });
+      }
+    }
+  
+    @override
+    void dispose() {
+      for (final f in _flights) {
+        f.entry.remove();
+        f.ctrl.dispose();
+      }
+      _flights.clear();
+      _addedTimer?.cancel();
+      _burstTimer?.cancel();
+      _intro.dispose();
+      controller.dispose();
+      super.dispose();
+    }
+  
+    // ── colours ───────────────────────────────────────────────────────────────
+  
+    Color _colorOf(List<Product> list, int i) =>
+        colors[list[i.clamp(0, list.length - 1).toInt()].id] ?? _fallback;
+  
+    Color _blended(List<Product> list, double pos) {
+      final lo = pos.floor().clamp(0, list.length - 1).toInt();
+      final hi = (lo + 1).clamp(0, list.length - 1).toInt();
+      return Color.lerp(_colorOf(list, lo), _colorOf(list, hi), pos - lo)!;
+    }
+  
+    // ── actions ───────────────────────────────────────────────────────────────
+  
+    Future<void> _setCategory(String c) async {
+      if (c == chip) return;
+      HapticFeedback.selectionClick();
+      final token = ++_catToken;
+      setState(() {
+        chip = c;
+        rowShown = false;
+      });
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (!mounted || token != _catToken) return;
+      controller.jumpTo(0);
+      setState(() {
+        category = c;
+        rowShown = true;
+      });
+    }
+  
+    void _toggleFav(Product p) {
+      HapticFeedback.lightImpact();
+      final adding = !favorites.contains(p.id);
+      setState(() {
+        adding ? favorites.add(p.id) : favorites.remove(p.id);
+        favBurstId = adding ? p.id : null;
+      });
+      _burstTimer?.cancel();
+      if (adding) {
+        _burstTimer = Timer(const Duration(milliseconds: 700), () {
+          if (mounted) setState(() => favBurstId = null);
+        });
+      }
+    }
+  
+    Offset? _centerOf(GlobalKey k) {
+      final box = k.currentContext?.findRenderObject() as RenderBox?;
+      if (box == null || !box.attached) return null;
+      return box.localToGlobal(box.size.center(Offset.zero));
+    }
+  
+    void _addToCart(Product p) {
+      HapticFeedback.mediumImpact();
+  
+      setState(() => justAdded = p.id);
+      _addedTimer?.cancel();
+      _addedTimer = Timer(const Duration(milliseconds: 1500), () {
+        if (mounted) setState(() => justAdded = null);
+      });
+  
+      final from = _centerOf(_addKey);
+      final to = _centerOf(_bagKey);
+      if (from == null || to == null) {
+        _land(p, size);
+        return;
+      }
+  
+      final lockedSize = size;
+      final ctrl = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 750),
+      );
+      final control = Offset(
+        (from.dx + to.dx) / 2 - 70,
+        math.min(from.dy, to.dy) - 160,
+      );
+  
+      late final OverlayEntry entry;
+      entry = OverlayEntry(
+        builder: (_) => IgnorePointer(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedBuilder(
+                animation: ctrl,
+                builder: (_, __) {
+                  final t = Curves.easeInOutCubic.transform(ctrl.value);
+                  final u = 1 - t;
+                  final pos = from * (u * u) + control * (2 * u * t) + to * (t * t);
+                  final s = ui.lerpDouble(76, 22, t)!;
+                  final fade = ctrl.value > 0.88
+                      ? (1 - (ctrl.value - 0.88) / 0.12).clamp(0.0, 1.0).toDouble()
+                      : 1.0;
+                  return Positioned(
+                    left: pos.dx - s / 2,
+                    top: pos.dy - s / 2,
+                    width: s,
+                    height: s,
+                    child: Opacity(
+                      opacity: fade,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(120),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.network(
+                            p.image,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                            const ColoredBox(color: Color(0xFF3DDC97)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+  
+      Overlay.of(context).insert(entry);
+      final flight = _Flight(ctrl, entry);
+      _flights.add(flight);
+      ctrl.forward().whenComplete(() {
+        entry.remove();
+        ctrl.dispose();
+        _flights.remove(flight);
+        if (mounted) _land(p, lockedSize);
+      });
+    }
+  
+    void _land(Product p, String s) {
+      HapticFeedback.lightImpact();
+      setState(() {
+        final i = lines.indexWhere((l) => l.product.id == p.id && l.size == s);
+        if (i >= 0) {
+          lines[i].qty++;
+        } else {
+          lines.add(CartLine(p, s));
+        }
+        bagBump++;
+      });
+    }
+  
+    void _openCart() {
+      HapticFeedback.selectionClick();
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black.withAlpha(150),
+        builder: (_) => _CartSheet(
+          lines: lines,
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+        ),
+      );
+    }
+  
+    // ── build ─────────────────────────────────────────────────────────────────
+  
+    @override
+    Widget build(BuildContext context) {
+      final mq = MediaQuery.of(context);
+      final style = responsiveStyle(mq);
+      final list = visible;
+  
+      return Scaffold(
+        backgroundColor: _bg,
+        body: Stack(
+          children: [
+            // Background follows the product colour
+            Positioned.fill(
+              child: ValueListenableBuilder<double>(
+                valueListenable: controller.positionListenable,
+                builder: (_, pos, __) {
+                  final c = _blended(list, pos);
+                  return DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color.lerp(c, _bg, 0.1)!,
+                          Color.lerp(c, _bg, 0.7)!,
+                          _bg,
+                        ],
+                        stops: const [0, 0.55, 1],
+                      ),
+                    ),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: const Alignment(0.4, -0.2),
+                          radius: 0.9,
+                          colors: [Colors.white.withAlpha(26), Colors.transparent],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  _Reveal(
+                    anim: _intro,
+                    begin: 0,
+                    end: 0.45,
+                    dy: -16,
+                    child: _TopBar(
+                      count: cartCount,
+                      bump: bagBump,
+                      bagKey: _bagKey,
+                      onBag: _openCart,
+                    ),
+                  ),
+                  _Reveal(
+                    anim: _intro,
+                    begin: 0.12,
+                    end: 0.55,
+                    dy: 14,
+                    child: _CategoryChips(selected: chip, onSelect: _setCategory),
+                  ),
+                  Expanded(
+                    child: _Reveal(
+                      anim: _intro,
+                      begin: 0.25,
+                      end: 0.9,
+                      dy: 36,
+                      scaleFrom: 0.9,
+                      child: AnimatedOpacity(
+                        opacity: rowShown ? 1 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        child: AnimatedScale(
+                          scale: rowShown ? 1 : 0.96,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutCubic,
+                          child: PullOutRow(
+                            controller: controller,
+                            itemCount: list.length,
+                            style: style,
+                            dragPixelsPerItem: style.stepX * (style.itemHeight ?? 240),
+                            autofocus: true,
+                            headerBuilder: (context, c) {
+                              final p = list[c.currentIndex.clamp(0, list.length - 1).toInt()];
+                              return _ProductHeader(product: p);
+                            },
+                            itemBuilder: (context, i, selected) => ProductCard(
+                              product: list[i],
+                              selected: selected,
+                              glow: colors[list[i].id] ?? _fallback,
+                              isFav: favorites.contains(list[i].id),
+                              burst: favBurstId == list[i].id,
+                              onFav: () => _toggleFav(list[i]),
+                            ),
+                            controlsBuilder: (context, c) {
+                              final p = list[c.currentIndex.clamp(0, list.length - 1).toInt()];
+                              return _PurchasePanel(
+                                product: p,
+                                size: size,
+                                addKey: _addKey,
+                                onSize: (s) {
+                                  HapticFeedback.selectionClick();
+                                  setState(() => size = s);
+                                },
+                                added: justAdded == p.id,
+                                onAdd: () => _addToCart(p),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Top bar + chips
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class _TopBar extends StatelessWidget {
+    const _TopBar({
+      required this.count,
+      required this.bump,
+      required this.bagKey,
+      required this.onBag,
+    });
+  
+    final int count;
+    final int bump;
+    final GlobalKey bagKey;
+    final VoidCallback onBag;
+  
+    @override
+    Widget build(BuildContext context) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: Row(
+          children: [
+            PullOutGlassButton(
+              size: 44,
+              onPressed: () {},
+              child: const Icon(Icons.grid_view_rounded, size: 20),
+            ),
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'ATELIER',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 6,
+                  ),
+                ),
+              ),
+            ),
+            // The GlobalKey sits on a fixed box so the fly-to-bag target never moves.
+            KeyedSubtree(
+              key: bagKey,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey(bump),
+                  tween: Tween(begin: bump == 0 ? 1.0 : 1.3, end: 1.0),
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeOutBack,
+                  builder: (_, s, child) => Transform.scale(scale: s, child: child),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      PullOutGlassButton(
+                        size: 44,
+                        onPressed: onBag,
+                        child: const Icon(Icons.shopping_bag_outlined, size: 20),
+                      ),
+                      Positioned(
+                        right: -3,
+                        top: -3,
+                        child: AnimatedScale(
+                          scale: count > 0 ? 1 : 0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutBack,
+                          child: IgnorePointer(
+                            child: Container(
+                              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: Text(
+                                '$count',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+  
+  class _CategoryChips extends StatelessWidget {
+    const _CategoryChips({required this.selected, required this.onSelect});
+    final String selected;
+    final ValueChanged<String> onSelect;
+  
+    @override
+    Widget build(BuildContext context) {
+      return SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          itemCount: categories.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (_, i) {
+            final c = categories[i];
+            final on = c == selected;
+            return _PressScale(
+              onTap: () => onSelect(c),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: on ? Colors.white : Colors.white.withAlpha(20),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: on ? Colors.white : Colors.white.withAlpha(46),
+                  ),
+                ),
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 260),
+                  style: TextStyle(
+                    color: on ? Colors.black : Colors.white.withAlpha(210),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  child: Text(c),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Product header
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class _ProductHeader extends StatelessWidget {
+    const _ProductHeader({required this.product});
+    final Product product;
+  
+    @override
+    Widget build(BuildContext context) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          switchInCurve: Curves.easeOutCubic,
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween(begin: const Offset(0, 0.25), end: Offset.zero).animate(anim),
+              child: child,
+            ),
+          ),
+          child: Row(
+            key: ValueKey(product.id),
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.category.toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(160),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2.4,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (product.oldPrice != null)
+                    Text(
+                      '\$${product.oldPrice!.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(120),
+                        fontSize: 12,
+                        decoration: TextDecoration.lineThrough,
+                        decorationColor: Colors.white.withAlpha(120),
+                      ),
+                    ),
+                  Text(
+                    '\$${product.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Purchase panel: sliding size selector + add to bag
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class _PurchasePanel extends StatelessWidget {
+    const _PurchasePanel({
+      required this.product,
+      required this.size,
+      required this.onSize,
+      required this.added,
+      required this.onAdd,
+      required this.addKey,
+    });
+  
+    final Product product;
+    final String size;
+    final ValueChanged<String> onSize;
+    final bool added;
+    final VoidCallback onAdd;
+    final GlobalKey addKey;
+  
+    @override
+    Widget build(BuildContext context) {
+      final green = const Color(0xFF3DDC97);
+  
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+  
+            const SizedBox(height: 14),
+            _PressScale(
+              onTap: onAdd,
+              scale: 0.96,
+              child: AnimatedContainer(
+                key: addKey,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                height: 56,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: added ? green : Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (added ? green : Colors.white).withAlpha(70),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  transitionBuilder: (child, a) => FadeTransition(
+                    opacity: a,
+                    child: ScaleTransition(scale: Tween(begin: 0.85, end: 1.0).animate(a), child: child),
+                  ),
+                  child: Row(
+                    key: ValueKey(added),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        added ? Icons.check_rounded : Icons.shopping_bag_outlined,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        added
+                            ? 'Added to bag'
+                            : 'Add to bag  ·  \$${product.price.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Product card
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class ProductCard extends StatelessWidget {
+    const ProductCard({
+      super.key,
+      required this.product,
+      required this.selected,
+      required this.glow,
+      required this.isFav,
+      required this.burst,
+      required this.onFav,
+    });
+  
+    final Product product;
+    final double selected;
+    final Color glow;
+    final bool isFav;
+    final bool burst;
+    final VoidCallback onFav;
+  
+    @override
+    Widget build(BuildContext context) {
+      const radius = 24.0;
+      const heart = Color(0xFFFF5C7A);
+  
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(150),
+              blurRadius: 30,
+              offset: const Offset(0, 18),
+            ),
+            BoxShadow(
+              color: glow.withAlpha((140 * selected).round()),
+              blurRadius: 40 + 20 * selected,
+              spreadRadius: -4,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Color(0xFF12151D)),
+              Image.network(
+                product.image,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                frameBuilder: (context, child, frame, sync) => AnimatedOpacity(
+                  opacity: frame == null ? 0 : 1,
+                  duration: const Duration(milliseconds: 450),
+                  curve: Curves.easeOut,
+                  child: child,
+                ),
+                errorBuilder: (_, __, ___) => DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [glow, const Color(0xFF12151D)],
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.checkroom_rounded,
+                      size: 56,
+                      color: Colors.white.withAlpha(150),
+                    ),
+                  ),
+                ),
+              ),
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withAlpha((170 * selected).round()),
+                      ],
+                      stops: const [0.6, 1],
+                    ),
+                  ),
+                ),
+              ),
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Colors.white.withAlpha(40), Colors.white.withAlpha(0)],
+                      stops: const [0, 0.35],
+                    ),
+                  ),
+                ),
+              ),
+              if (product.tag != null)
+                Positioned(
+                  left: 12,
+                  top: 12,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withAlpha(110),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withAlpha(60)),
+                      ),
+                      child: Text(
+                        product.tag!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              // Favourite: pop + ring burst (only tappable on the selected card)
+              Positioned(
+                right: 10,
+                top: 10,
+                child: IgnorePointer(
+                  ignoring: selected < 0.9,
+                  child: Opacity(
+                    opacity: 0.35 + 0.65 * selected,
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.none,
+                        children: [
+                          if (burst)
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeOut,
+                              builder: (_, t, __) => Transform.scale(
+                                scale: 1 + 1.0 * t,
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: heart.withAlpha(((1 - t) * 220).round()),
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          _PressScale(
+                            onTap: onFav,
+                            scale: 0.85,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withAlpha(90),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withAlpha(50)),
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 380),
+                                transitionBuilder: (c, a) => ScaleTransition(
+                                  scale: a.drive(CurveTween(curve: Curves.easeOutBack)),
+                                  child: c,
+                                ),
+                                child: Icon(
+                                  isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                  key: ValueKey(isFav),
+                                  size: 18,
+                                  color: isFav ? heart : Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 14,
+                child: IgnorePointer(
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      heightFactor: selected,
+                      child: Opacity(
+                        opacity: selected,
+                        child: Row(
+                          children: [
+                            Icon(Icons.star_rounded, color: Colors.amber.shade400, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              product.rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              'Free shipping',
+                              style: TextStyle(
+                                color: Colors.white.withAlpha(190),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    border: Border.all(
+                      color: Colors.white.withAlpha((36 + 90 * selected).round()),
+                      width: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Cart sheet
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class _CartSheet extends StatefulWidget {
+    const _CartSheet({required this.lines, required this.onChanged});
+    final List<CartLine> lines;
+    final VoidCallback onChanged;
+  
+    @override
+    State<_CartSheet> createState() => _CartSheetState();
+  }
+  
+  class _CartSheetState extends State<_CartSheet> {
+    bool placed = false;
+  
+    double get total =>
+        widget.lines.fold(0.0, (a, l) => a + l.product.price * l.qty);
+    int get count => widget.lines.fold(0, (a, l) => a + l.qty);
+  
+    void _change(VoidCallback fn) {
+      setState(fn);
+      widget.onChanged();
+    }
+  
+    Future<void> _checkout() async {
+      if (placed || widget.lines.isEmpty) return;
+      HapticFeedback.mediumImpact();
+      setState(() => placed = true);
+      await Future.delayed(const Duration(milliseconds: 1600));
+      if (!mounted) return;
+      widget.lines.clear();
+      widget.onChanged();
+      Navigator.of(context).pop();
+    }
+  
+    @override
+    Widget build(BuildContext context) {
+      final maxH = MediaQuery.of(context).size.height * 0.78;
+      final empty = widget.lines.isEmpty;
+      const green = Color(0xFF3DDC97);
+  
+      return ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: maxH),
+            decoration: BoxDecoration(
+              color: const Color(0xE60E1016),
+              border: Border(top: BorderSide(color: Colors.white.withAlpha(40))),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(60),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Text(
+                          'Your bag',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: Text(
+                            '$count ${count == 1 ? 'item' : 'items'}',
+                            key: ValueKey(count),
+                            style: TextStyle(
+                              color: Colors.white.withAlpha(140),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    if (empty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 36),
+                        child: Column(
+                          children: [
+                            Icon(Icons.shopping_bag_outlined,
+                                size: 48, color: Colors.white.withAlpha(90)),
+                            const SizedBox(height: 12),
+                            Text(
+                              placed ? 'Order placed' : 'Your bag is empty',
+                              style: TextStyle(
+                                color: Colors.white.withAlpha(140),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: widget.lines.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, i) {
+                            final line = widget.lines[i];
+                            return TweenAnimationBuilder<double>(
+                              key: ObjectKey(line),
+                              tween: Tween(begin: 0, end: 1),
+                              duration: Duration(milliseconds: 350 + i * 70),
+                              curve: Curves.easeOutCubic,
+                              builder: (_, t, child) => Opacity(
+                                opacity: t,
+                                child: Transform.translate(
+                                  offset: Offset(0, 18 * (1 - t)),
+                                  child: child,
+                                ),
+                              ),
+                              child: Dismissible(
+                                key: ObjectKey(line),
+                                direction: DismissDirection.endToStart,
+                                onDismissed: (_) => _change(() => widget.lines.remove(line)),
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 22),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF5C7A).withAlpha(60),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: const Icon(Icons.delete_outline_rounded,
+                                      color: Color(0xFFFF5C7A)),
+                                ),
+                                child: _CartRow(
+                                  line: line,
+                                  onMinus: () => _change(() {
+                                    line.qty--;
+                                    if (line.qty <= 0) widget.lines.remove(line);
+                                  }),
+                                  onPlus: () => _change(() => line.qty++),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text(
+                          'Total',
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(160),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(end: total),
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.easeOutCubic,
+                          builder: (_, v, __) => Text(
+                            '\$${v.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _PressScale(
+                      onTap: empty ? null : _checkout,
+                      scale: 0.97,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOutCubic,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: placed
+                              ? green
+                              : (empty ? Colors.white.withAlpha(40) : Colors.white),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          transitionBuilder: (c, a) => FadeTransition(
+                            opacity: a,
+                            child: ScaleTransition(scale: a, child: c),
+                          ),
+                          child: Row(
+                            key: ValueKey(placed),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (placed)
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0, end: 1),
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.elasticOut,
+                                  builder: (_, t, child) =>
+                                      Transform.scale(scale: t, child: child),
+                                  child: const Icon(Icons.check_circle_rounded,
+                                      color: Colors.black, size: 22),
+                                ),
+                              if (placed) const SizedBox(width: 10),
+                              Text(
+                                placed ? 'Order placed' : 'Checkout',
+                                style: TextStyle(
+                                  color: empty && !placed ? Colors.white54 : Colors.black,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+  }
+  
+  class _CartRow extends StatelessWidget {
+    const _CartRow({required this.line, required this.onMinus, required this.onPlus});
+    final CartLine line;
+    final VoidCallback onMinus;
+    final VoidCallback onPlus;
+  
+    @override
+    Widget build(BuildContext context) {
+      final p = line.product;
+      return Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(14),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withAlpha(26)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 56,
+                height: 72,
+                child: Image.network(
+                  p.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const ColoredBox(
+                    color: Color(0xFF1E2230),
+                    child: Icon(Icons.checkroom_rounded, color: Colors.white54),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Size ${line.size}  ·  \$${p.price.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(150),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _QtyButton(icon: Icons.remove_rounded, onTap: onMinus),
+            SizedBox(
+              width: 28,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
+                child: Text(
+                  '${line.qty}',
+                  key: ValueKey(line.qty),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            _QtyButton(icon: Icons.add_rounded, onTap: onPlus),
+          ],
+        ),
+      );
+    }
+  }
+  
+  class _QtyButton extends StatelessWidget {
+    const _QtyButton({required this.icon, required this.onTap});
+    final IconData icon;
+    final VoidCallback onTap;
+  
+    @override
+    Widget build(BuildContext context) {
+      return _PressScale(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        scale: 0.85,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(24),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withAlpha(40)),
+          ),
+          child: Icon(icon, size: 16, color: Colors.white),
+        ),
+      );
+    }
+  }
+  // pull_out_row.dart
+  //
+  // PullOutRow — a 3D perspective row where the selected child slides out of
+  // the row. YOU design the child; this widget only handles layout, 3D
+  // transform, fade/blur, spring motion and input.
+  //
+  // Single file. Zero dependencies. Flutter 3.10+.
+  //
+  //   final controller = PullOutController();
+  //
+  //   SizedBox(
+  //     height: 600, // needs bounded height
+  //     child: PullOutRow(
+  //       controller: controller,
+  //       itemCount: items.length,
+  //       itemBuilder: (context, i, t) => MyCard(items[i]),
+  //       onIndexChanged: (i) => debugPrint('selected $i'),
+  //       controlsBuilder: (context, c) => PullOutScrubber(controller: c),
+  //     ),
+  //   );
+  //
+  // itemBuilder receives `t`: 1.0 when the item is the selected one (fully
+  // pulled out), 0.0 when it is part of the row. Use it to animate your own
+  // design (glow, scale, show details...). Pass `t` through or ignore it.
+  
+  
+  
+  /// [selected] is 0..1 — how "pulled out" this item is right now.
+  typedef PullOutItemBuilder = Widget Function(
+      BuildContext context, int index, double selected);
+  typedef PullOutSlotBuilder = Widget Function(
+      BuildContext context, PullOutController controller);
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Style
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  /// Sizes are fractions of item height so the row scales to any space.
+  @immutable
+  class PullOutStyle {
+    const PullOutStyle({
+      this.itemHeight,
+      this.heightFactor = 0.38,
+      this.aspectRatio = 1.0,
+      this.itemAngle = 0.62,
+      this.sceneTilt = 0.44,
+      this.perspective = 0.05,
+      this.stepX = 0.135,
+      this.stepY = -0.012,
+      this.stepZ = 0.19,
+      this.anchor = 2.3,
+      this.pullOut = 0.8,
+      this.pullScale = 1.0,
+      this.visibleCount = 11,
+      this.behindCount = 7,
+      this.fadeStart = 0.55,
+      this.nearBlur = 0.9,
+      this.farBlur = 2.0,
+      this.dimFar = 0.35,
+    });
+  
+    /// Item height in px. Null = [heightFactor] of available height.
+    final double? itemHeight;
+    final double heightFactor;
+  
+    /// width / height of each item.
+    final double aspectRatio;
+  
+    /// Yaw of each item in radians (0 = facing viewer).
+    final double itemAngle;
+  
+    /// Camera pitch in radians.
+    final double sceneTilt;
+  
+    /// 0 = orthographic, ~0.35 natural, 0.8 dramatic.
+    final double perspective;
+  
+    /// Per-item offset along the row (fraction of item height).
+    final double stepX;
+    final double stepY;
+    final double stepZ;
+  
+    /// How many items back from the front the row is centred on.
+    final double anchor;
+  
+    /// How far the selected item slides out, as a fraction of item width.
+    /// Negative slides the other way. 0 disables.
+    final double pullOut;
+  
+    /// Extra scale on the selected item (1 = none, 1.1 = 10% bigger).
+    final double pullScale;
+  
+    final int visibleCount;
+    final int behindCount;
+  
+    /// Fraction (0..1) of visibleCount where the far fade begins.
+    final double fadeStart;
+  
+    /// Blur sigma per item in front (capped at 8) / for far items.
+    final double nearBlur;
+    final double farBlur;
+  
+    /// 0..1 darkening of far items.
+    final double dimFar;
+  
+    PullOutStyle copyWith({
+      double? itemHeight,
+      double? heightFactor,
+      double? aspectRatio,
+      double? itemAngle,
+      double? sceneTilt,
+      double? perspective,
+      double? stepX,
+      double? stepY,
+      double? stepZ,
+      double? anchor,
+      double? pullOut,
+      double? pullScale,
+      int? visibleCount,
+      int? behindCount,
+      double? fadeStart,
+      double? nearBlur,
+      double? farBlur,
+      double? dimFar,
+    }) {
+      return PullOutStyle(
+        itemHeight: itemHeight ?? this.itemHeight,
+        heightFactor: heightFactor ?? this.heightFactor,
+        aspectRatio: aspectRatio ?? this.aspectRatio,
+        itemAngle: itemAngle ?? this.itemAngle,
+        sceneTilt: sceneTilt ?? this.sceneTilt,
+        perspective: perspective ?? this.perspective,
+        stepX: stepX ?? this.stepX,
+        stepY: stepY ?? this.stepY,
+        stepZ: stepZ ?? this.stepZ,
+        anchor: anchor ?? this.anchor,
+        pullOut: pullOut ?? this.pullOut,
+        pullScale: pullScale ?? this.pullScale,
+        visibleCount: visibleCount ?? this.visibleCount,
+        behindCount: behindCount ?? this.behindCount,
+        fadeStart: fadeStart ?? this.fadeStart,
+        nearBlur: nearBlur ?? this.nearBlur,
+        farBlur: farBlur ?? this.farBlur,
+        dimFar: dimFar ?? this.dimFar,
+      );
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Controller
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class PullOutController extends ChangeNotifier {
+    PullOutController({int initialIndex = 0}) : _index = initialIndex;
+  
+    _PullOutRowState? _state;
+    int _index;
+    final ValueNotifier<double> _position = ValueNotifier<double>(0);
+  
+    int get currentIndex => _index;
+  
+    /// Fractional scroll position, updates every frame while moving.
+    double get position => _position.value;
+    ValueListenable<double> get positionListenable => _position;
+  
+    int get itemCount => _state?.widget.itemCount ?? 0;
+    bool get canGoNext => _index < itemCount - 1;
+    bool get canGoPrev => _index > 0;
+  
+    void animateTo(int index) => _state?._goTo(index);
+    void jumpTo(int index) => _state?._jump(index.toDouble());
+    void next() => _state?._goTo((_state?._target ?? _index) + 1);
+    void prev() => _state?._goTo((_state?._target ?? _index) - 1);
+  
+    /// Set a fractional position immediately (custom scrubbers). Pair with [settle].
+    void scrollTo(double position) => _state?._jump(position);
+    void settle() => _state?._goTo(_position.value.round());
+  
+    void _attach(_PullOutRowState s) {
+      _state = s;
+      _index = s._index;
+      _position.value = s._anim.value;
+    }
+  
+    void _detach(_PullOutRowState s) {
+      if (_state == s) _state = null;
+    }
+  
+    void _setIndex(int i) {
+      _index = i;
+      notifyListeners();
+    }
+  
+    @override
+    void dispose() {
+      _position.dispose();
+      super.dispose();
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Widget
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class PullOutRow extends StatefulWidget {
+    const PullOutRow({
+      super.key,
+      required this.itemCount,
+      required this.itemBuilder,
+      this.controller,
+      this.initialIndex,
+      this.onIndexChanged,
+      this.onItemTap,
+      this.headerBuilder,
+      this.controlsBuilder,
+      this.style = const PullOutStyle(),
+      this.spring = const SpringDescription(mass: 1, stiffness: 170, damping: 24),
+      this.dragPixelsPerItem = 90,
+      this.wheelThreshold = 40,
+      this.enableDrag = true,
+      this.enableWheel = true,
+      this.enableKeyboard = true,
+      this.autofocus = false,
+      this.clipBehavior = Clip.none,
+    });
+  
+    final int itemCount;
+  
+    /// Your own design. `selected` is 0..1 (1 = pulled out).
+    final PullOutItemBuilder itemBuilder;
+  
+    final PullOutController? controller;
+    final int? initialIndex;
+    final ValueChanged<int>? onIndexChanged;
+  
+    /// Tap on an item. Non-selected items also animate to front.
+    final ValueChanged<int>? onItemTap;
+  
+    final PullOutSlotBuilder? headerBuilder;
+    final PullOutSlotBuilder? controlsBuilder;
+  
+    final PullOutStyle style;
+    final SpringDescription spring;
+    final double dragPixelsPerItem;
+    final double wheelThreshold;
+    final bool enableDrag;
+    final bool enableWheel;
+    final bool enableKeyboard;
+    final bool autofocus;
+    final Clip clipBehavior;
+  
+    @override
+    State<PullOutRow> createState() => _PullOutRowState();
+  }
+  
+  class _Dims {
+    const _Dims(this.w, this.h);
+    final double w;
+    final double h;
+  
+    factory _Dims.from(BoxConstraints c, PullOutStyle s) {
+      var h = s.itemHeight ??
+          (c.maxHeight.isFinite ? c.maxHeight * s.heightFactor : 240.0);
+      var w = h * s.aspectRatio;
+      if (c.maxWidth.isFinite) {
+        final maxW = c.maxWidth * 0.62;
+        if (w > maxW) {
+          w = maxW;
+          h = w / s.aspectRatio;
+        }
+      }
+      return _Dims(w, h);
+    }
+  }
+  
+  class _PullOutRowState extends State<PullOutRow>
+      with SingleTickerProviderStateMixin {
+    late final AnimationController _anim;
+    late PullOutController _ctrl;
+    late bool _ownsCtrl;
+    final FocusNode _focus = FocusNode(debugLabel: 'PullOutRow');
+  
+    late int _index;
+    int _target = 0;
+    double _wheelAccum = 0;
+    DateTime _lastWheel = DateTime.fromMillisecondsSinceEpoch(0);
+  
+    int get _max => math.max(0, widget.itemCount - 1);
+  
+    @override
+    void initState() {
+      super.initState();
+      _ownsCtrl = widget.controller == null;
+      _ctrl = widget.controller ?? PullOutController();
+      _index = (widget.initialIndex ?? _ctrl._index).clamp(0, _max).toInt();
+      _target = _index;
+      _anim = AnimationController.unbounded(vsync: this, value: _index.toDouble())
+        ..addListener(_onTick)
+        ..addStatusListener(_onStatus);
+      _ctrl._attach(this);
+    }
+  
+    @override
+    void didUpdateWidget(PullOutRow old) {
+      super.didUpdateWidget(old);
+      if (old.controller != widget.controller) {
+        _ctrl._detach(this);
+        if (_ownsCtrl) _ctrl.dispose();
+        _ownsCtrl = widget.controller == null;
+        _ctrl = widget.controller ?? PullOutController(initialIndex: _index);
+        _ctrl._attach(this);
+      }
+      if (old.itemCount != widget.itemCount && _anim.value > _max) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _anim.value > _max) _jump(_max.toDouble());
+        });
+      }
+    }
+  
+    @override
+    void dispose() {
+      _ctrl._detach(this);
+      if (_ownsCtrl) _ctrl.dispose();
+      _anim.dispose();
+      _focus.dispose();
+      super.dispose();
+    }
+  
+    // ── motion ────────────────────────────────────────────────────────────────
+  
+    void _onTick() {
+      _ctrl._position.value = _anim.value;
+      if (widget.itemCount == 0) return;
+      final idx = _anim.value.round().clamp(0, _max).toInt();
+      if (idx != _index) {
+        _index = idx;
+        _ctrl._setIndex(idx);
+        widget.onIndexChanged?.call(idx);
+      }
+    }
+  
+    void _onStatus(AnimationStatus status) {
+      if (status == AnimationStatus.completed) {
+        final t = _target.toDouble();
+        if (_anim.value != t && (_anim.value - t).abs() < 0.02) _anim.value = t;
+      }
+    }
+  
+    void _goTo(int i, {double velocity = 0}) {
+      if (widget.itemCount == 0) return;
+      _target = i.clamp(0, _max).toInt();
+      _anim.animateWith(
+        SpringSimulation(widget.spring, _anim.value, _target.toDouble(), velocity),
+      );
+    }
+  
+    void _jump(double v) {
+      _anim.stop();
+      final p = v.clamp(0, _max).toDouble();
+      _target = p.round();
+      _anim.value = p;
+    }
+  
+    void _tap(int i) {
+      widget.onItemTap?.call(i);
+      if (i != _index) _goTo(i);
+    }
+  
+    // ── input ─────────────────────────────────────────────────────────────────
+  
+    void _dragStart(DragStartDetails _) => _anim.stop();
+  
+    void _dragUpdate(DragUpdateDetails d) {
+      var delta = -d.delta.dx / widget.dragPixelsPerItem;
+      final v = _anim.value;
+      if ((v < 0 && delta < 0) || (v > _max && delta > 0)) delta *= 0.35;
+      _anim.value = v + delta;
+    }
+  
+    void _dragEnd(DragEndDetails d) {
+      final v = -d.velocity.pixelsPerSecond.dx / widget.dragPixelsPerItem;
+      _goTo((_anim.value + v * 0.15).round(), velocity: v);
+    }
+  
+    void _dragCancel() => _goTo(_anim.value.round());
+  
+    void _onSignal(PointerSignalEvent e) {
+      if (!widget.enableWheel || e is! PointerScrollEvent) return;
+      GestureBinding.instance.pointerSignalResolver.register(e, (event) {
+        final se = event as PointerScrollEvent;
+        final now = DateTime.now();
+        if (now.difference(_lastWheel) > const Duration(milliseconds: 250)) {
+          _wheelAccum = 0;
+        }
+        _lastWheel = now;
+        final dx = se.scrollDelta.dx, dy = se.scrollDelta.dy;
+        _wheelAccum += dx.abs() > dy.abs() ? dx : dy;
+        if (_wheelAccum.abs() >= widget.wheelThreshold) {
+          _goTo(_target + (_wheelAccum > 0 ? 1 : -1));
+          _wheelAccum = 0;
+        }
+      });
+    }
+  
+    KeyEventResult _onKey(FocusNode node, KeyEvent e) {
+      if (!widget.enableKeyboard || e is KeyUpEvent) return KeyEventResult.ignored;
+      final k = e.logicalKey;
+      if (k == LogicalKeyboardKey.arrowRight || k == LogicalKeyboardKey.arrowDown) {
+        _goTo(_target + 1);
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowUp) {
+        _goTo(_target - 1);
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.home) {
+        _goTo(0);
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.end) {
+        _goTo(_max);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+  
+    // ── build ─────────────────────────────────────────────────────────────────
+  
+    @override
+    Widget build(BuildContext context) {
+      Widget scene = LayoutBuilder(builder: (context, c) {
+        final dims = _Dims.from(c, widget.style);
+        return AnimatedBuilder(
+          animation: _anim,
+          builder: (context, _) => _buildScene(context, dims),
+        );
+      });
+  
+      if (widget.enableDrag) {
+        scene = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: _dragStart,
+          onHorizontalDragUpdate: _dragUpdate,
+          onHorizontalDragEnd: _dragEnd,
+          onHorizontalDragCancel: _dragCancel,
+          child: scene,
+        );
+      }
+      scene = ClipRect(clipBehavior: widget.clipBehavior, child: scene);
+  
+      return Focus(
+        focusNode: _focus,
+        autofocus: widget.autofocus,
+        onKeyEvent: _onKey,
+        child: Listener(
+          onPointerDown: (_) => _focus.requestFocus(),
+          onPointerSignal: _onSignal,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.headerBuilder != null)
+                ListenableBuilder(
+                  listenable: _ctrl,
+                  builder: (c, _) => widget.headerBuilder!(c, _ctrl),
+                ),
+              Expanded(child: scene),
+              if (widget.controlsBuilder != null)
+                ListenableBuilder(
+                  listenable: _ctrl,
+                  builder: (c, _) => widget.controlsBuilder!(c, _ctrl),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+  
+    Widget _buildScene(BuildContext context, _Dims dm) {
+      if (widget.itemCount == 0) return const SizedBox.expand();
+      final s = widget.style;
+      final pos = _anim.value;
+      final first = math.max(0, (pos - s.behindCount - 1).floor());
+      final last = math.min(widget.itemCount - 1, (pos + s.visibleCount).ceil());
+  
+      final items = <Widget>[];
+      // Far first, near last → correct painter order.
+      for (var i = last; i >= first; i--) {
+        final d = i - pos;
+        if (d <= -s.behindCount || d >= s.visibleCount) continue;
+        final item = _buildItem(context, i, d, dm);
+        if (item != null) items.add(item);
+      }
+      return Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: items,
+      );
+    }
+  
+    Widget? _buildItem(BuildContext context, int i, double d, _Dims dm) {
+      final s = widget.style;
+  
+      // Opacity
+      double opacity;
+      if (d >= 0) {
+        final f = d / s.visibleCount;
+        opacity = f <= s.fadeStart ? 1 : 1 - (f - s.fadeStart) / (1 - s.fadeStart);
+      } else {
+        opacity = 1 - (-d / s.behindCount) * 0.85;
+      }
+      opacity = opacity.clamp(0.0, 1.0);
+      if (opacity < 0.01) return null;
+  
+      // Blur
+      final sigma = d >= 0
+          ? s.farBlur * (d / s.visibleCount)
+          : math.min(s.nearBlur * -d, 8.0);
+  
+      final dim = d > 0 ? (d / s.visibleCount * s.dimFar).clamp(0.0, 1.0) : 0.0;
+  
+      // 0..1, smoothstep of closeness to the front.
+      final p = (1 - d.abs()).clamp(0.0, 1.0).toDouble();
+      final selected = p * p * (3 - 2 * p);
+  
+      Widget child = SizedBox(
+        width: dm.w,
+        height: dm.h,
+        child: widget.itemBuilder(context, i, selected),
+      );
+  
+      if (dim > 0.01) {
+        child = ColorFiltered(
+          colorFilter: ColorFilter.mode(
+            Color.fromRGBO(0, 0, 0, dim),
+            BlendMode.srcATop,
+          ),
+          child: child,
+        );
+      }
+  
+      child = GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => _tap(i),
+        child: child,
+      );
+  
+      Widget item = Transform(
+        alignment: Alignment.center,
+        transform: _itemMatrix(d, selected, dm),
+        child: child,
+      );
+  
+      if (sigma > 0.25) {
+        item = ImageFiltered(
+          imageFilter: ImageFilter.blur(
+            sigmaX: sigma,
+            sigmaY: sigma,
+            tileMode: TileMode.decal,
+          ),
+          child: item,
+        );
+      }
+      if (opacity < 0.995) item = Opacity(opacity: opacity, child: item);
+      if (d > 3) item = IgnorePointer(child: item);
+      // Stable identity so each item's own state (animations, images) follows
+      // its index while others enter/leave the visible window.
+      return KeyedSubtree(key: ValueKey<int>(i), child: item);
+    }
+  
+    Matrix4 _itemMatrix(double d, double selected, _Dims dm) {
+      final s = widget.style;
+      final focal = dm.h / math.max(s.perspective, 0.0001);
+      final z = math.max(d * s.stepZ * dm.h, -focal * 0.55);
+      final off = d - s.anchor;
+      final pull = selected * s.pullOut * dm.w;
+      final scale = 1 + (s.pullScale - 1) * selected;
+  
+      return Matrix4.identity()
+        ..setEntry(3, 2, s.perspective / dm.h)
+        ..rotateX(s.sceneTilt)
+        ..multiply(Matrix4.translationValues(
+          off * s.stepX * dm.h,
+          off * s.stepY * dm.h,
+          z,
+        ))
+        ..rotateY(s.itemAngle)
+        ..multiply(Matrix4.translationValues(pull, 0, 0))
+        ..scale(scale, scale, 1);
+    }
+  }
+  
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Optional extras: glass button + tick scrubber
+  // ─────────────────────────────────────────────────────────────────────────────
+  
+  class PullOutGlassButton extends StatelessWidget {
+    const PullOutGlassButton({
+      super.key,
+      required this.onPressed,
+      required this.child,
+      this.size = 52,
+      this.width,
+      this.tooltip,
+    });
+  
+    final VoidCallback? onPressed;
+    final Widget child;
+    final double size;
+    final double? width;
+    final String? tooltip;
+  
+    @override
+    Widget build(BuildContext context) {
+      final radius = BorderRadius.circular(size / 2);
+      Widget button = Opacity(
+        opacity: onPressed == null ? 0.4 : 1,
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Material(
+              color: Colors.white.withAlpha(30),
+              shape: RoundedRectangleBorder(
+                borderRadius: radius,
+                side: BorderSide(color: Colors.white.withAlpha(46)),
+              ),
+              child: InkWell(
+                onTap: onPressed,
+                customBorder: RoundedRectangleBorder(borderRadius: radius),
+                child: SizedBox(
+                  width: width ?? size,
+                  height: size,
+                  child: IconTheme(
+                    data: const IconThemeData(color: Colors.white, size: 22),
+                    child: DefaultTextStyle(
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      child: Center(child: child),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      if (tooltip != null) button = Tooltip(message: tooltip!, child: button);
+      return button;
+    }
+  }
+  
+  /// Waveform-style tick scrubber. Drag to scroll the row, tap to jump.
+  class PullOutScrubber extends StatelessWidget {
+    const PullOutScrubber({
+      super.key,
+      required this.controller,
+      this.height = 44,
+      this.tickSpacing = 6,
+      this.color = const Color(0x55FFFFFF),
+      this.activeColor = Colors.white,
+    });
+  
+    final PullOutController controller;
+    final double height;
+    final double tickSpacing;
+    final Color color;
+    final Color activeColor;
+  
+    @override
+    Widget build(BuildContext context) {
+      return LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth;
+        double toPos(double x) =>
+            (x / w).clamp(0.0, 1.0) * math.max(0, controller.itemCount - 1);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (d) => controller.animateTo(toPos(d.localPosition.dx).round()),
+          onHorizontalDragStart: (d) => controller.scrollTo(toPos(d.localPosition.dx)),
+          onHorizontalDragUpdate: (d) => controller.scrollTo(toPos(d.localPosition.dx)),
+          onHorizontalDragEnd: (_) => controller.settle(),
+          onHorizontalDragCancel: controller.settle,
+          child: ValueListenableBuilder<double>(
+            valueListenable: controller.positionListenable,
+            builder: (context, pos, _) => CustomPaint(
+              size: Size(w, height),
+              painter: _ScrubberPainter(
+                position: pos,
+                count: controller.itemCount,
+                spacing: tickSpacing,
+                color: color,
+                activeColor: activeColor,
+              ),
+            ),
+          ),
+        );
+      });
+    }
+  }
+  
+  class _ScrubberPainter extends CustomPainter {
+    _ScrubberPainter({
+      required this.position,
+      required this.count,
+      required this.spacing,
+      required this.color,
+      required this.activeColor,
+    });
+  
+    final double position;
+    final int count;
+    final double spacing;
+    final Color color;
+    final Color activeColor;
+  
+    @override
+    void paint(Canvas canvas, Size size) {
+      final n = math.max(2, (size.width / spacing).floor());
+      final m = count <= 1 ? 0.0 : position / (count - 1) * size.width;
+      final p = Paint()
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 1.4;
+  
+      for (var k = 0; k < n; k++) {
+        final x = (k + 0.5) * size.width / n;
+        final dist = (x - m).abs() / (size.width * 0.14);
+        final bump = math.exp(-dist * dist);
+        final h = size.height * (0.22 + 0.55 * bump);
+        p.color = Color.lerp(color, activeColor, bump)!;
+        canvas.drawLine(Offset(x, size.height - h), Offset(x, size.height), p);
+      }
+  
+      p
+        ..color = activeColor
+        ..strokeWidth = 2;
+      canvas.drawLine(Offset(m, 5), Offset(m, size.height), p);
+      canvas.drawCircle(Offset(m, 4), 3.5, Paint()..color = activeColor);
+    }
+  
+    @override
+    bool shouldRepaint(_ScrubberPainter o) =>
+        o.position != position ||
+            o.count != count ||
+            o.spacing != spacing ||
+            o.color != color ||
+            o.activeColor != activeColor;
+  }
